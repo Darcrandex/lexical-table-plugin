@@ -1,8 +1,8 @@
 import { DecoratorNode, NodeKey, createEditor } from 'lexical'
-import { nanoid } from 'nanoid'
 import { ReactNode } from 'react'
 import FormTableComp from './FormTableComp'
 import { DEFAULT_CELL_WIDTH, FormTableCommandPayload, FormTableCompProps, FormTableData, FormTableType } from './types'
+import { uid } from './utils'
 
 export class FormTableNode extends DecoratorNode<ReactNode> {
   __props: FormTableCompProps = {}
@@ -95,16 +95,16 @@ export function $createFormTableNode(payload: FormTableCommandPayload) {
   const props: FormTableCompProps = {
     colHeaders: Array(payload.cols)
       .fill(0)
-      .map(() => ({ id: nanoid(), width: DEFAULT_CELL_WIDTH })),
+      .map(() => ({ id: uid(), width: DEFAULT_CELL_WIDTH })),
 
     rows: Array(payload.rows)
       .fill(0)
       .map(() => ({
-        id: nanoid(),
+        id: uid(),
         cols: Array(payload.cols)
           .fill(0)
           .map(() => {
-            const cellId = nanoid()
+            const cellId = uid()
             return { id: cellId, nestedEditor: createEditor({ namespace: cellId }) }
           }),
       })),

@@ -81,7 +81,12 @@ export default function ColHeaderItem(props: { col: ColHeader; index: number; no
 
   return (
     <>
-      <th ref={elRef} className='bg-pink-400 relative' style={{ width: resizing ? currWidth : props.col.width }}>
+      <th
+        ref={elRef}
+        id={props.col.id}
+        className='bg-pink-400 relative'
+        style={{ width: resizing ? currWidth : props.col.width }}
+      >
         {String.fromCharCode(65 + props.index)}
 
         <i
