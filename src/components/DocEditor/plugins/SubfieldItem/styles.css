@@ -1,0 +1,14 @@
+.subfield-item-node {
+  position: relative;
+  flex: 1;
+  padding: 4px;
+  background: rgb(69, 205, 108);
+}
+
+.subfield-item-toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(0, -100%);
+  background: #ee8484;
+}
