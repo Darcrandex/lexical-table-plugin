@@ -4,6 +4,7 @@
  * @author darcrand
  */
 
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { LexicalNestedComposer } from '@lexical/react/LexicalNestedComposer'
@@ -11,57 +12,82 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { mergeRegister } from '@lexical/utils'
 import clsx from 'clsx'
 import { BLUR_COMMAND, COMMAND_PRIORITY_EDITOR, LexicalEditor } from 'lexical'
-import { useEffect } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 export type EditableCellProps = { nestedEditor: LexicalEditor }
 
 export default function EditableCell(props: EditableCellProps) {
-  useEffect(() => {
-    // 初始化为不可编辑
-    props.nestedEditor.setEditable(false)
+  return (
+    <>
+      <LexicalNestedComposer initialEditor={props.nestedEditor}>
+        <InnerContent />
+      </LexicalNestedComposer>
+    </>
+  )
+}
 
+function InnerContent() {
+  const [editor] = useLexicalComposerContext()
+  const [isEditable, setIsEditable] = useState(false)
+  const elRef = useRef<HTMLElement>(null)
+
+  const doEdit = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      editor.update(() => {
+        editor.setEditable(true)
+        editor.focus()
+        setIsEditable(true)
+      })
+    },
+    [editor]
+  )
+
+  // 编辑器失去焦点的时候,退出编辑模式
+  useEffect(() => {
     return mergeRegister(
-      // 编辑器失去焦点的时候,退出编辑模式
-      props.nestedEditor.registerCommand(
+      editor.registerCommand(
         BLUR_COMMAND,
         (_payload, _editor) => {
           _editor.setEditable(false)
+          setIsEditable(false)
           return true
         },
         COMMAND_PRIORITY_EDITOR
       )
     )
-  }, [props.nestedEditor])
+  }, [editor])
 
-  const doEdit = () => {
-    props.nestedEditor.setEditable(true)
-    props.nestedEditor.focus()
-  }
+  // 外部事件, 取消编辑状态
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (!elRef.current?.contains(e.target as any)) {
+        editor.setEditable(false)
+        setIsEditable(false)
+      }
+    }
 
-  const isEditable = props.nestedEditor.isEditable()
+    window.addEventListener('mouseup', handle)
+    return () => {
+      window.removeEventListener('mouseup', handle)
+    }
+  }, [editor])
 
   return (
     <>
-      <section
-        onDoubleClick={(e) => {
-          e.stopPropagation()
-          doEdit()
-        }}
-      >
-        <LexicalNestedComposer initialEditor={props.nestedEditor}>
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable
-                className={clsx(
-                  'm-4 outline-none min-h-[22px] bg-indigo-400',
-                  !isEditable && 'select-none pointer-events-none'
-                )}
-              />
-            }
-            placeholder={null}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-        </LexicalNestedComposer>
+      <section ref={elRef} onDoubleClick={doEdit}>
+        <RichTextPlugin
+          contentEditable={
+            <ContentEditable
+              className={clsx(
+                'm-4 p-4 outline-none min-h-[22px]',
+                isEditable ? 'bg-green-200' : 'bg-indigo-400 select-none pointer-events-none'
+              )}
+            />
+          }
+          placeholder={null}
+          ErrorBoundary={LexicalErrorBoundary}
+        />
       </section>
     </>
   )

@@ -1,7 +1,14 @@
 import { DecoratorNode, NodeKey, createEditor } from 'lexical'
 import { ReactNode } from 'react'
 import FormTableComp from './FormTableComp'
-import { DEFAULT_CELL_WIDTH, FormTableCommandPayload, FormTableCompProps, FormTableData, FormTableType } from './types'
+import {
+  DEFAULT_CELL_WIDTH,
+  FormTableCommandPayload,
+  FormTableCompProps,
+  FormTableData,
+  FormTableType,
+  defaultEditorStateStr,
+} from './types'
 import { uid } from './utils'
 
 export class FormTableNode extends DecoratorNode<ReactNode> {
@@ -33,12 +40,11 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
         ...row,
         cols: row.cols.map((col) => {
           // 实例化并初始化内容
-          const e = createEditor()
-          const editorState = e.parseEditorState(JSON.stringify(col.stateData || {}))
+          const editorState = createEditor().parseEditorState(JSON.stringify(col.stateData))
 
           return {
             ...col,
-            nestedEditor: createEditor({ editorState, namespace: col.id }),
+            nestedEditor: createEditor({ editorState, namespace: col.id, editable: false }),
           }
         }),
       })),
@@ -68,6 +74,11 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
 
   createDOM() {
     const el = document.createElement('div')
+    // 注意：
+    // 这种方式并不会让 tailwindcss 识别
+    // 由于内部组件中使用到同样的类名
+    // 因此忽略
+    el.classList.add('select-none')
     return el
   }
 
@@ -105,7 +116,11 @@ export function $createFormTableNode(payload: FormTableCommandPayload) {
           .fill(0)
           .map(() => {
             const cellId = uid()
-            return { id: cellId, nestedEditor: createEditor({ namespace: cellId }) }
+            const editorState = createEditor().parseEditorState(defaultEditorStateStr)
+            return {
+              id: cellId,
+              nestedEditor: createEditor({ namespace: cellId, editable: false, editorState }),
+            }
           }),
       })),
   }

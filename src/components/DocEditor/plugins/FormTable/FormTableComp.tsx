@@ -4,7 +4,6 @@
  * @author darcrand
  */
 
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useClickAway } from 'ahooks'
 import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -13,21 +12,25 @@ import EditableCell from './EditableCell'
 import { FormTableCompProps } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
-  const [editor] = useLexicalComposerContext()
-
   // 选中单元格
+  const tableRef = useRef<HTMLTableElement>(null)
   const [selectedCellIds, setSelectedCellIds] = useState<string[]>([])
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
 
   const onSelectStart = useCallback((e: MouseEvent) => {
     console.log('start')
+    if (!tableRef.current?.contains(e.target as any)) {
+      return
+    }
+
     setSelecting(true)
     setStartPos({ x: e.clientX, y: e.clientY })
   }, [])
 
   const onSelectMove = useCallback(
     (e: MouseEvent) => {
+      e.stopPropagation()
       if (!selecting) return
 
       // 左上角
@@ -74,8 +77,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
     }
   }, [onSelectEnd, onSelectMove, onSelectStart])
 
-  // 点击外部情况选中
-  const tableRef = useRef<HTMLTableElement>(null)
+  // 点击外部清空
   useClickAway(() => {
     setSelectedCellIds([])
   }, tableRef)

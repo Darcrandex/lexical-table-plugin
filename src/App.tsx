@@ -15,31 +15,12 @@ export default function App() {
 
     if (str) {
       setState(str)
-    } else {
-      // 默认的数据
-      setState(
-        JSON.stringify({
-          root: {
-            children: [
-              {
-                children: [],
-                direction: null,
-                format: '',
-                indent: 0,
-                type: 'paragraph',
-                version: 1,
-              },
-            ],
-            direction: null,
-            format: '',
-            indent: 0,
-            type: 'root',
-            version: 1,
-          },
-        })
-      )
     }
   }, [])
 
-  return <>{editorStateStr && <DocEditor editorState={editorStateStr} />}</>
+  return (
+    <>
+      <DocEditor editorState={editorStateStr} />
+    </>
+  )
 }

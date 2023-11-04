@@ -11,15 +11,13 @@ import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 
 import { FormTableNode, FormTablePlugin, InsertFormTableCommand } from './plugins/FormTable'
+import InitialEditorStatePlugin from './plugins/InitialEditorStatePlugin'
 import { InsertSubfieldCommand, SubfieldNode, SubfieldPlugin } from './plugins/Subfield'
 import { SubfieldItemNode } from './plugins/SubfieldItem'
 
-export default function DocEditor(props: { editorState: any }) {
+export default function DocEditor(props: { editorState?: string }) {
   const config: InitialConfigType = {
     namespace: 'DocEditor',
-
-    // 加载保存的内容
-    editorState: props.editorState,
     editable: true,
     nodes: [FormTableNode, SubfieldNode, SubfieldItemNode],
     onError: (error) => {
@@ -30,6 +28,7 @@ export default function DocEditor(props: { editorState: any }) {
     <>
       <LexicalComposer initialConfig={config}>
         <EditorContent />
+        <InitialEditorStatePlugin editorState={props.editorState} />
       </LexicalComposer>
     </>
   )
