@@ -5,16 +5,18 @@
  */
 
 import { useClickAway } from 'ahooks'
+import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import EditableCell from './EditableCell'
-import { FormTableCompProps, SelectedCell } from './types'
+import TopCellMenus from './TopCellMenus'
+import { FormTableCompProps } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
   const tableRef = useRef<HTMLTableElement>(null)
-  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([])
+  const [selectedCellIds, setSelectedCellIds] = useState<string[]>([])
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
@@ -42,38 +44,26 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
 
       if (tableRef.current) {
         const ids: string[] = []
-        const cells: SelectedCell[] = []
-        const allCells = tableRef.current.querySelectorAll('td')
+        const cellEles = tableRef.current.querySelectorAll('td.data-cell:not(.hidden)')
 
-        for (let index = 0; index < allCells.length; index++) {
-          const ele = allCells[index]
+        for (let index = 0; index < cellEles.length; index++) {
+          const ele = cellEles[index]
           const id = ele.getAttribute('id')
           if (!id) continue
 
-          const rect = ele.getBoundingClientRect()
+          const cellRect = ele.getBoundingClientRect()
 
           // 当 x轴，y轴 都有交集时，说明在选区内部
+          // !!! 算法需要调整，如果单元格是一个合并后的单元格，区域可能错误
           if (
-            Math.max(x1, rect.left) <= Math.min(x2, rect.right) &&
-            Math.max(y1, rect.top) <= Math.min(y2, rect.bottom)
+            Math.max(x1, cellRect.left) <= Math.min(x2, cellRect.right) &&
+            Math.max(y1, cellRect.top) <= Math.min(y2, cellRect.bottom)
           ) {
             ids.push(id)
-
-            const rowIndex = Number.parseInt(ele.getAttribute('data-row-index') || '0')
-            const cellIndex = Number.parseInt(ele.getAttribute('data-cell-index') || '0')
-            const rowSpan = ele.getAttribute('rowspan')
-            const colSpan = ele.getAttribute('colspan')
-            cells.push({
-              id,
-              rowIndex,
-              cellIndex,
-              rowSpan: rowSpan ? Number.parseInt(rowSpan) : undefined,
-              colSpan: colSpan ? Number.parseInt(colSpan) : undefined,
-            })
           }
         }
 
-        setSelectedCells(cells)
+        setSelectedCellIds(ids)
       }
     },
     [selecting, startPos]
@@ -96,14 +86,21 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
 
   // 点击外部清空
   useClickAway(() => {
-    setSelectedCells([])
+    setSelectedCellIds([])
   }, tableRef)
 
   return (
     <>
       <h1>FormTableComp</h1>
 
-      <table ref={tableRef} className='select-none overflow-y-hidden'>
+      <table ref={tableRef} className='relative select-none overflow-y-hidden'>
+        {/* 单元格功能菜单 */}
+        <TopCellMenus
+          selectedCellIds={selectedCellIds}
+          setSelectedCellIds={setSelectedCellIds}
+          nodeKey={props.nodeKey}
+        />
+
         <thead>
           <tr>
             <th id='origin' className='bg-orange-400' style={{ width: 24, height: 24 }}></th>
@@ -119,7 +116,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           {props.rows?.map((row, rowIndex) => (
             <tr key={row.id}>
               {/* 行头 */}
-              <th id={row.id} className='bg-violet-400' style={{ width: 24, height: 24 }}>
+              <th id={row.id} className={clsx('row-header', 'bg-violet-400')} style={{ width: 24, height: 24 }}>
                 {rowIndex + 1}
               </th>
 
@@ -131,12 +128,12 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   data-cell-index={cellIndex}
                   rowSpan={cell.rowSpan}
                   colSpan={cell.colSpan}
-                  className={selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : ''}
-                  onClick={() => {
-                    setSelectedCells([
-                      { id: cell.id, rowIndex, cellIndex, rowSpan: cell.rowSpan, colSpan: cell.colSpan },
-                    ])
-                  }}
+                  className={clsx(
+                    'data-cell',
+                    cell.hidden && 'hidden invisible',
+                    selectedCellIds.some((v) => v === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
+                  )}
+                  onClick={() => setSelectedCellIds([cell.id])}
                 >
                   {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
                 </td>
