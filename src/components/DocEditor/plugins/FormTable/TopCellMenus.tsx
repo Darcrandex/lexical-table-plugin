@@ -9,83 +9,55 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useCallback, useMemo, useRef } from 'react'
+import { SelectedCell } from './types'
 import { $setFormTableProps } from './utils'
 
-type CellInfo = { id: string; rowIndex: number; colIndex: number; rowSpan?: number; colSpan?: number }
-
 export type TopCellMenusProps = {
-  selectedCellIds: string[]
-  setSelectedCellIds: (ids: string[]) => void
+  selectedCells: SelectedCell[]
+  setSelectedCells: (cells: SelectedCell[]) => void
+
   nodeKey: NodeKey
 }
 
 export default function TopCellMenus(props: TopCellMenusProps) {
   const [editor] = useLexicalComposerContext()
   const elRef = useRef<HTMLElement>(null)
-  const selectedCellIds = props.selectedCellIds
-
-  // 所选单元格的视图信息
-  const cellInfoArr: CellInfo[] = useMemo(() => {
-    const tableEle = elRef.current?.parentElement
-    const colHeaderEles = tableEle?.querySelectorAll('th.col-header')
-    if (!tableEle || !colHeaderEles) return []
-
-    const cells = selectedCellIds.map((id) => {
-      const currCellEle = tableEle?.querySelector(`#${id}`)
-      if (currCellEle) {
-        const rowIndex = Number.parseInt(currCellEle.getAttribute('data-row-index') || '0')
-        const rowSpan = currCellEle.getAttribute('rowspan')
-        const colSpan = currCellEle.getAttribute('colspan')
-
-        // 单元格索引其实是不等于列索引的
-        // 但是通过隐藏需要删除的单元格，保持原有的 DOM 结构
-        // 可以使单元格索引等于列索引
-        const colIndex = Number.parseInt(currCellEle.getAttribute('data-cell-index') || '0')
-        return {
-          id,
-          rowIndex,
-          colIndex,
-          rowSpan: rowSpan ? Number.parseInt(rowSpan) : undefined,
-          colSpan: colSpan ? Number.parseInt(colSpan) : undefined,
-        }
-      }
-      return { id, rowIndex: 0, colIndex: 0 }
-    })
-
-    return cells
-  }, [selectedCellIds])
-
-  const canMergeCells = useMemo(() => {
-    return cellInfoArr.length > 1 && cellInfoArr.every((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) === 2)
-  }, [cellInfoArr])
-
-  const canUnmergeCells = useMemo(() => {
-    return cellInfoArr.length > 0 && cellInfoArr.some((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) > 2)
-  }, [cellInfoArr])
 
   // 合并单元格
+  const canMergeCells = useMemo(() => {
+    return (
+      props.selectedCells.length > 1 &&
+      props.selectedCells.every((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) === 2)
+    )
+  }, [props.selectedCells])
+
   const mergeCells = useCallback(() => {
     // 左上角需要修改的单元格
-    let targetCellInfo: CellInfo = {
+    let targetCell: SelectedCell = {
       id: '',
       colIndex: Infinity,
       rowIndex: Infinity,
     }
 
-    for (let index = 0; index < cellInfoArr.length; index++) {
-      const item = cellInfoArr[index]
-      if (item.rowIndex < targetCellInfo.rowIndex || item.colIndex < targetCellInfo.colIndex) {
-        targetCellInfo = { ...item }
+    for (let index = 0; index < props.selectedCells.length; index++) {
+      const item = props.selectedCells[index]
+      if (item.rowIndex < targetCell.rowIndex || item.colIndex < targetCell.colIndex) {
+        targetCell = { ...item }
         break
       }
     }
 
     const rowSpan =
-      1 + Math.max(...cellInfoArr.map((v) => v.rowIndex)) - Math.min(...cellInfoArr.map((v) => v.rowIndex))
+      1 +
+      Math.max(...props.selectedCells.map((v) => v.rowIndex)) -
+      Math.min(...props.selectedCells.map((v) => v.rowIndex))
     const colSpan =
-      1 + Math.max(...cellInfoArr.map((v) => v.colIndex)) - Math.min(...cellInfoArr.map((v) => v.colIndex))
+      1 +
+      Math.max(...props.selectedCells.map((v) => v.colIndex)) -
+      Math.min(...props.selectedCells.map((v) => v.colIndex))
 
-    const removeCellIds = cellInfoArr.filter((v) => v.id !== targetCellInfo.id).map((v) => v.id)
+    // 需要被隐藏的单元格
+    const removeCellIds = props.selectedCells.filter((v) => v.id !== targetCell.id).map((v) => v.id)
 
     $setFormTableProps(editor, props.nodeKey, (prev) => {
       return {
@@ -98,19 +70,21 @@ export default function TopCellMenus(props: TopCellMenusProps) {
               .map((v) => ({ ...v, hidden: v.hidden || removeCellIds.includes(v.id) }))
               // 再修改跨行跨列
               // 合并 editorState
-              .map((v) => (v.id === targetCellInfo.id ? { ...v, rowSpan, colSpan } : v)),
+              .map((v) => (v.id === targetCell.id ? { ...v, rowSpan, colSpan } : v)),
           }
         }),
       }
     })
 
-    props.setSelectedCellIds([targetCellInfo.id])
-  }, [cellInfoArr, editor, props])
+    props.setSelectedCells([targetCell])
+  }, [editor, props])
 
-  const unmergeCells = useCallback(() => {
-    const shouldUnmergeCells = cellInfoArr.filter((v) => (v.rowSpan || 1) + (v.colSpan || 1) > 2)
-    console.log('shouldUnmergeCells', shouldUnmergeCells)
-  }, [cellInfoArr])
+  // 拆分单元格
+  const canUnmergeCells = useMemo(() => {
+    return false
+  }, [])
+
+  const unmergeCells = useCallback(() => {}, [])
 
   return (
     <>
@@ -118,7 +92,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         ref={elRef}
         className={clsx(
           'absolute left-0 top-0 right-0 flex space-x-4 -translate-y-full bg-lime-500 transition-all',
-          cellInfoArr.length > 0 ? 'visible opacity-100' : 'invisible opacity-0'
+          props.selectedCells.length > 0 ? 'visible opacity-100' : 'invisible opacity-0'
         )}
       >
         <button disabled={!canMergeCells} onClick={mergeCells}>

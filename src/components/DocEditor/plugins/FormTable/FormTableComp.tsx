@@ -11,21 +11,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import EditableCell from './EditableCell'
 import TopCellMenus from './TopCellMenus'
-import { FormTableCompProps } from './types'
+import { FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
   const tableRef = useRef<HTMLTableElement>(null)
-  const [selectedCellIds, setSelectedCellIds] = useState<string[]>([])
+  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([])
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
 
   const onSelectStart = useCallback((e: MouseEvent) => {
-    if (!tableRef.current?.contains(e.target as any)) {
-      return
-    }
-
     setSelecting(true)
     setStartPos({ x: e.clientX, y: e.clientY })
   }, [])
@@ -43,8 +39,13 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
       const y2 = Math.max(startPos.y, e.clientY)
 
       if (tableRef.current) {
-        const ids: string[] = []
-        const cellEles = tableRef.current.querySelectorAll('td.data-cell:not(.hidden)')
+        // 所有转换过的单元格信息
+        const cells: SelectedCell[] = []
+        // 与选区有交集的单元格
+        const cellsInArea: SelectedCell[] = []
+
+        // 排除隐藏的单元格
+        const cellEles = Array.from(tableRef.current.querySelectorAll('td.data-cell:not(.hidden)'))
 
         for (let index = 0; index < cellEles.length; index++) {
           const ele = cellEles[index]
@@ -52,18 +53,40 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           if (!id) continue
 
           const cellRect = ele.getBoundingClientRect()
+          const rowIndex = Number.parseInt(ele.getAttribute('data-row-index') || '0')
+          // 由于因合并单元格而被删除的单元格是通过隐藏实现的（DOM结构不变）
+          // 因此单元格的索引值相当于列的索引值
+          const colIndex = Number.parseInt(ele.getAttribute('data-cell-index') || '0')
+          const rowSpan = Number.parseInt(ele.getAttribute('rowspan') || '1')
+          const colSpan = Number.parseInt(ele.getAttribute('colspan') || '1')
+          cells.push({ id, rowIndex, colIndex, rowSpan, colSpan })
 
-          // 当 x轴，y轴 都有交集时，说明在选区内部
-          // !!! 算法需要调整，如果单元格是一个合并后的单元格，区域可能错误
           if (
             Math.max(x1, cellRect.left) <= Math.min(x2, cellRect.right) &&
             Math.max(y1, cellRect.top) <= Math.min(y2, cellRect.bottom)
           ) {
-            ids.push(id)
+            cellsInArea.push({ id, rowIndex, colIndex, rowSpan, colSpan })
           }
         }
 
-        setSelectedCellIds(ids)
+        const minRowIndex = Math.min(...cellsInArea.map((v) => v.rowIndex))
+        const maxRowIndex = Math.max(...cellsInArea.map((v) => v.rowIndex + (v.rowSpan || 1) - 1))
+        const minColIndex = Math.min(...cellsInArea.map((v) => v.colIndex))
+        const maxColIndex = Math.max(...cellsInArea.map((v) => v.colIndex + (v.colSpan || 1) - 1))
+
+        // 如果存在跨行列的单元格，需要将该单元格所在的行列延申的其他单元格添加到选区
+        const cellsInRange: SelectedCell[] = cells.filter((v) => {
+          if (cellsInArea.some((m) => m.id === v.id)) return true
+
+          return (
+            v.rowIndex >= minRowIndex &&
+            v.rowIndex <= maxRowIndex &&
+            v.colIndex >= minColIndex &&
+            v.colIndex <= maxColIndex
+          )
+        })
+
+        setSelectedCells(cellsInRange)
       }
     },
     [selecting, startPos]
@@ -74,19 +97,17 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
   }, [])
 
   useEffect(() => {
-    window.addEventListener('mousedown', onSelectStart)
     window.addEventListener('mousemove', onSelectMove)
     window.addEventListener('mouseup', onSelectEnd)
     return () => {
-      window.removeEventListener('mousedown', onSelectStart)
       window.removeEventListener('mousemove', onSelectMove)
       window.removeEventListener('mouseup', onSelectEnd)
     }
-  }, [onSelectEnd, onSelectMove, onSelectStart])
+  }, [onSelectEnd, onSelectMove])
 
   // 点击外部清空
   useClickAway(() => {
-    setSelectedCellIds([])
+    setSelectedCells([])
   }, tableRef)
 
   return (
@@ -95,11 +116,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
 
       <table ref={tableRef} className='relative select-none overflow-y-hidden'>
         {/* 单元格功能菜单 */}
-        <TopCellMenus
-          selectedCellIds={selectedCellIds}
-          setSelectedCellIds={setSelectedCellIds}
-          nodeKey={props.nodeKey}
-        />
+        <TopCellMenus selectedCells={selectedCells} setSelectedCells={setSelectedCells} nodeKey={props.nodeKey} />
 
         <thead>
           <tr>
@@ -131,9 +148,14 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   className={clsx(
                     'data-cell',
                     cell.hidden && 'hidden invisible',
-                    selectedCellIds.some((v) => v === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
+                    selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
                   )}
-                  onClick={() => setSelectedCellIds([cell.id])}
+                  onClick={() =>
+                    setSelectedCells([
+                      { id: cell.id, rowIndex, colIndex: cellIndex, rowSpan: cell.rowSpan, colSpan: cell.colSpan },
+                    ])
+                  }
+                  onMouseDown={(e) => onSelectStart(e.nativeEvent)}
                 >
                   {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
                 </td>
