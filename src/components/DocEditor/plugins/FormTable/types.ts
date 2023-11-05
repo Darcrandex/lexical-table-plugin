@@ -31,11 +31,6 @@ export type FormTableCommandPayload = {
 }
 
 export type FormTableData = Spread<{ props: FormTableCompProps }, SerializedLexicalNode>
-export const FormTableType = 'form-table-node'
-export const DEFAULT_CELL_WIDTH = 200
-
-export const defaultEditorStateStr =
-  '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
 
 // 选区所选单元格
 export type SelectedCell = Pick<CellData, 'id' | 'colSpan' | 'rowSpan'> & {

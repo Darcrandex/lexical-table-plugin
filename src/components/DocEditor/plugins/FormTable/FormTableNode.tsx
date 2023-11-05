@@ -1,14 +1,8 @@
 import { DecoratorNode, NodeKey, createEditor } from 'lexical'
 import { ReactNode } from 'react'
 import FormTableComp from './FormTableComp'
-import {
-  DEFAULT_CELL_WIDTH,
-  FormTableCommandPayload,
-  FormTableCompProps,
-  FormTableData,
-  FormTableType,
-  defaultEditorStateStr,
-} from './types'
+import { DEFAULT_CELL_WIDTH, FormTableType, defaultEditorStateStr } from './const'
+import { FormTableCommandPayload, FormTableCompProps, FormTableData } from './types'
 import { uid } from './utils'
 
 export class FormTableNode extends DecoratorNode<ReactNode> {

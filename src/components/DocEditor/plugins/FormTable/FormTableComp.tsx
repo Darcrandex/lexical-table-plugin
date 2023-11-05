@@ -9,8 +9,8 @@ import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
-import EditableCell from './EditableCell'
 import TopCellMenus from './TopCellMenus'
+import { dataCellClassName, rowHeaderClassName } from './const'
 import { FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
@@ -45,7 +45,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
         const cellsInArea: SelectedCell[] = []
 
         // 排除隐藏的单元格
-        const cellEles = Array.from(tableRef.current.querySelectorAll('td.data-cell:not(.hidden)'))
+        const cellEles = Array.from(tableRef.current.querySelectorAll(`td.${dataCellClassName}:not(.hidden)`))
 
         for (let index = 0; index < cellEles.length; index++) {
           const ele = cellEles[index]
@@ -133,7 +133,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           {props.rows?.map((row, rowIndex) => (
             <tr key={row.id}>
               {/* 行头 */}
-              <th id={row.id} className={clsx('row-header', 'bg-violet-400')} style={{ width: 24, height: 24 }}>
+              <th id={row.id} className={clsx(rowHeaderClassName, 'bg-violet-400')} style={{ width: 24, height: 24 }}>
                 {rowIndex + 1}
               </th>
 
@@ -146,7 +146,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   rowSpan={cell.rowSpan}
                   colSpan={cell.colSpan}
                   className={clsx(
-                    'data-cell',
+                    dataCellClassName,
                     cell.hidden && 'hidden invisible',
                     selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
                   )}
@@ -157,7 +157,10 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   }
                   onMouseDown={(e) => onSelectStart(e.nativeEvent)}
                 >
-                  {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
+                  <div className='p-4 border'>
+                    {rowIndex},{cellIndex},{cell.rowSpan},{cell.colSpan}
+                  </div>
+                  {/* {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />} */}
                 </td>
               ))}
             </tr>

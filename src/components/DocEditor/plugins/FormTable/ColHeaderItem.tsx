@@ -8,7 +8,8 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ColHeader, DEFAULT_CELL_WIDTH } from './types'
+import { DEFAULT_CELL_WIDTH, colHeaderClassName } from './const'
+import { ColHeader } from './types'
 import { $setFormTableProps } from './utils'
 
 export default function ColHeaderItem(props: { col: ColHeader; index: number; nodeKey: NodeKey }) {
@@ -85,7 +86,7 @@ export default function ColHeaderItem(props: { col: ColHeader; index: number; no
       <th
         ref={elRef}
         id={props.col.id}
-        className={clsx('col-header', 'bg-pink-400 relative')}
+        className={clsx(colHeaderClassName, 'bg-pink-400 relative')}
         style={{ width: resizing ? currWidth : props.col.width }}
       >
         {String.fromCharCode(65 + props.index)}
