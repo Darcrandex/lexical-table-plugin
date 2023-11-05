@@ -48,7 +48,7 @@ function EditorContent() {
         <header className='p-4 bg-gray-200 space-x-4'>
           <button onClick={onSave}>Save</button>
 
-          <button onClick={() => editor.dispatchCommand(InsertFormTableCommand, { rows: 3, cols: 2 })}>table</button>
+          <button onClick={() => editor.dispatchCommand(InsertFormTableCommand, { rows: 6, cols: 4 })}>table</button>
 
           <button onClick={() => editor.dispatchCommand(InsertSubfieldCommand, { cols: 6 })}>subfield</button>
         </header>

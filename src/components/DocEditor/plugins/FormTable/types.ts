@@ -2,7 +2,7 @@ import { LexicalEditor, SerializedLexicalNode, Spread } from 'lexical'
 
 export type ColHeader = { id: string; width?: number }
 
-export type RowItem = { id: string; height?: number; cols: CellData[] }
+export type RowItem = { id: string; height?: number; cells: CellData[] }
 
 export type CellData = {
   id: string
@@ -29,7 +29,15 @@ export type FormTableCommandPayload = {
 
 export type FormTableData = Spread<{ props: FormTableCompProps }, SerializedLexicalNode>
 export const FormTableType = 'form-table-node'
-export const DEFAULT_CELL_WIDTH = 300
+export const DEFAULT_CELL_WIDTH = 200
 
 export const defaultEditorStateStr =
   '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+
+// 交互阶段
+// 已选单元格基本信息
+export type SelectedCell = Pick<CellData, 'id' | 'rowSpan' | 'colSpan'> & {
+  rowIndex: number
+  // 单元格的索引值不一定等于它对应的列的索引
+  cellIndex: number
+}

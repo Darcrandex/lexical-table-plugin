@@ -9,17 +9,17 @@ import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import EditableCell from './EditableCell'
-import { FormTableCompProps } from './types'
+import { FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
   const tableRef = useRef<HTMLTableElement>(null)
-  const [selectedCellIds, setSelectedCellIds] = useState<string[]>([])
+  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([])
+
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
 
   const onSelectStart = useCallback((e: MouseEvent) => {
-    console.log('start')
     if (!tableRef.current?.contains(e.target as any)) {
       return
     }
@@ -42,9 +42,14 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
 
       if (tableRef.current) {
         const ids: string[] = []
+        const cells: SelectedCell[] = []
         const allCells = tableRef.current.querySelectorAll('td')
-        allCells.forEach((ele) => {
-          const cellId = ele.getAttribute('id') || ''
+
+        for (let index = 0; index < allCells.length; index++) {
+          const ele = allCells[index]
+          const id = ele.getAttribute('id')
+          if (!id) continue
+
           const rect = ele.getBoundingClientRect()
 
           // 当 x轴，y轴 都有交集时，说明在选区内部
@@ -52,11 +57,23 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
             Math.max(x1, rect.left) <= Math.min(x2, rect.right) &&
             Math.max(y1, rect.top) <= Math.min(y2, rect.bottom)
           ) {
-            ids.push(cellId)
-          }
-        })
+            ids.push(id)
 
-        setSelectedCellIds(ids.filter(Boolean))
+            const rowIndex = Number.parseInt(ele.getAttribute('data-row-index') || '0')
+            const cellIndex = Number.parseInt(ele.getAttribute('data-cell-index') || '0')
+            const rowSpan = ele.getAttribute('rowspan')
+            const colSpan = ele.getAttribute('colspan')
+            cells.push({
+              id,
+              rowIndex,
+              cellIndex,
+              rowSpan: rowSpan ? Number.parseInt(rowSpan) : undefined,
+              colSpan: colSpan ? Number.parseInt(colSpan) : undefined,
+            })
+          }
+        }
+
+        setSelectedCells(cells)
       }
     },
     [selecting, startPos]
@@ -79,7 +96,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
 
   // 点击外部清空
   useClickAway(() => {
-    setSelectedCellIds([])
+    setSelectedCells([])
   }, tableRef)
 
   return (
@@ -106,14 +123,22 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                 {rowIndex + 1}
               </th>
 
-              {row.cols?.map((col) => (
+              {row.cells?.map((cell, cellIndex) => (
                 <td
-                  key={col.id}
-                  id={col.id}
-                  className={selectedCellIds.includes(col.id) ? 'bg-yellow-400' : ''}
-                  onClick={() => setSelectedCellIds([col.id])}
+                  key={cell.id}
+                  id={cell.id}
+                  data-row-index={rowIndex}
+                  data-cell-index={cellIndex}
+                  rowSpan={cell.rowSpan}
+                  colSpan={cell.colSpan}
+                  className={selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : ''}
+                  onClick={() => {
+                    setSelectedCells([
+                      { id: cell.id, rowIndex, cellIndex, rowSpan: cell.rowSpan, colSpan: cell.colSpan },
+                    ])
+                  }}
                 >
-                  {!!col.nestedEditor && <EditableCell nestedEditor={col.nestedEditor} />}
+                  {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
                 </td>
               ))}
             </tr>

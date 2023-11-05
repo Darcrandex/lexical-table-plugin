@@ -38,13 +38,13 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
       ...payload.props,
       rows: payload.props.rows?.map((row) => ({
         ...row,
-        cols: row.cols.map((col) => {
+        cells: row.cells.map((cell) => {
           // 实例化并初始化内容
-          const editorState = createEditor().parseEditorState(JSON.stringify(col.stateData))
+          const editorState = createEditor().parseEditorState(JSON.stringify(cell.stateData))
 
           return {
-            ...col,
-            nestedEditor: createEditor({ editorState, namespace: col.id, editable: false }),
+            ...cell,
+            nestedEditor: createEditor({ editorState, namespace: cell.id, editable: false }),
           }
         }),
       })),
@@ -59,11 +59,11 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
         ...this.__props,
         rows: this.__props.rows?.map((row) => ({
           ...row,
-          cols: row.cols.map((col) => ({
-            ...col,
+          cells: row.cells.map((cell) => ({
+            ...cell,
             // 保存的时候, 销毁编辑器实例
             nestedEditor: undefined,
-            stateData: col.nestedEditor?.toJSON().editorState,
+            stateData: cell.nestedEditor?.toJSON().editorState,
           })),
         })),
       },
@@ -112,7 +112,7 @@ export function $createFormTableNode(payload: FormTableCommandPayload) {
       .fill(0)
       .map(() => ({
         id: uid(),
-        cols: Array(payload.cols)
+        cells: Array(payload.cols)
           .fill(0)
           .map(() => {
             const cellId = uid()
