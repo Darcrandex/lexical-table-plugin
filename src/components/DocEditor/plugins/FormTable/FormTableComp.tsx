@@ -192,9 +192,10 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   }
                   onMouseDown={(e) => onSelectStart(e.nativeEvent)}
                 >
-                  <div className='p-4 border'>
-                    ({rowIndex},{cellIndex}) [{cell.rowSpan},{cell.colSpan}]
+                  <div className='h-full p-4 border'>
+                    ({rowIndex},{cellIndex})
                   </div>
+
                   {/* {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />} */}
                 </td>
               ))}
