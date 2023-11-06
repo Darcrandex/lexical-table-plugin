@@ -7,6 +7,7 @@
 import { useClickAway } from 'ahooks'
 import clsx from 'clsx'
 import { NodeKey } from 'lexical'
+import { prop, uniqBy } from 'ramda'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import TopCellMenus from './TopCellMenus'
@@ -43,6 +44,8 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
         const cells: SelectedCell[] = []
         // 与选区有交集的单元格
         const cellsInArea: SelectedCell[] = []
+        // 通过延伸的单元格
+        const cellsInRange: SelectedCell[] = []
 
         // 排除隐藏的单元格
         const cellEles = Array.from(tableRef.current.querySelectorAll(`td.${dataCellClassName}:not(.hidden)`))
@@ -69,24 +72,56 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           }
         }
 
-        const minRowIndex = Math.min(...cellsInArea.map((v) => v.rowIndex))
-        const maxRowIndex = Math.max(...cellsInArea.map((v) => v.rowIndex + (v.rowSpan || 1) - 1))
-        const minColIndex = Math.min(...cellsInArea.map((v) => v.colIndex))
-        const maxColIndex = Math.max(...cellsInArea.map((v) => v.colIndex + (v.colSpan || 1) - 1))
+        cellsInRange.push(...cellsInArea)
 
-        // 如果存在跨行列的单元格，需要将该单元格所在的行列延申的其他单元格添加到选区
-        const cellsInRange: SelectedCell[] = cells.filter((v) => {
-          if (cellsInArea.some((m) => m.id === v.id)) return true
+        // 递归延伸单元格
+        let maxLoopTimes = 10000
+        const loop = () => {
+          // 当前最大行列
+          const minRowIndex = Math.min(...cellsInRange.map((v) => v.rowIndex))
+          const maxRowIndex = Math.max(...cellsInRange.map((v) => v.rowIndex + (v.rowSpan || 1) - 1))
+          const minColIndex = Math.min(...cellsInRange.map((v) => v.colIndex))
+          const maxColIndex = Math.max(...cellsInRange.map((v) => v.colIndex + (v.colSpan || 1) - 1))
 
-          return (
-            v.rowIndex >= minRowIndex &&
-            v.rowIndex <= maxRowIndex &&
-            v.colIndex >= minColIndex &&
-            v.colIndex <= maxColIndex
-          )
-        })
+          const extendedCells = cells
+            // 先排除已经选中的单元格
+            .filter((v) => cellsInRange.every((m) => v.id !== m.id))
+            // 再添加符合条件的单元格
+            .filter((v) => {
+              return (
+                v.rowIndex >= minRowIndex &&
+                v.rowIndex <= maxRowIndex &&
+                v.colIndex >= minColIndex &&
+                v.colIndex <= maxColIndex
+              )
+            })
 
-        setSelectedCells(cellsInRange)
+          // 如果存在跨行列的单元格，需要将该单元格所在的行列延申的其他单元格添加到选区
+          cellsInRange.push(...extendedCells)
+
+          // 判断进入递归
+          // 延伸单元格的最大行列
+          const _minRowIndex = Math.min(...cellsInRange.map((v) => v.rowIndex))
+          const _maxRowIndex = Math.max(...cellsInRange.map((v) => v.rowIndex + (v.rowSpan || 1) - 1))
+          const _minColIndex = Math.min(...cellsInRange.map((v) => v.colIndex))
+          const _maxColIndex = Math.max(...cellsInRange.map((v) => v.colIndex + (v.colSpan || 1) - 1))
+
+          if (
+            maxLoopTimes > 0 &&
+            (_minColIndex !== minColIndex ||
+              _maxColIndex !== maxColIndex ||
+              _minRowIndex !== minRowIndex ||
+              _maxRowIndex !== maxRowIndex)
+          ) {
+            --maxLoopTimes
+            loop()
+          }
+        }
+
+        // 第一次进入循环
+        loop()
+
+        setSelectedCells(uniqBy(prop('id'), cellsInRange))
       }
     },
     [selecting, startPos]
@@ -158,7 +193,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   onMouseDown={(e) => onSelectStart(e.nativeEvent)}
                 >
                   <div className='p-4 border'>
-                    {rowIndex},{cellIndex},{cell.rowSpan},{cell.colSpan}
+                    ({rowIndex},{cellIndex}) [{cell.rowSpan},{cell.colSpan}]
                   </div>
                   {/* {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />} */}
                 </td>
