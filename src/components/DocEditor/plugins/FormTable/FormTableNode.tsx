@@ -1,7 +1,7 @@
 import { DecoratorNode, NodeKey, createEditor } from 'lexical'
 import { ReactNode } from 'react'
 import FormTableComp from './FormTableComp'
-import { DEFAULT_CELL_WIDTH, FormTableType, defaultEditorStateStr } from './const'
+import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING, FORM_TABLE_TYPE } from './const'
 import { FormTableCommandPayload, FormTableCompProps, FormTableData } from './types'
 import { uid } from './utils'
 
@@ -16,7 +16,7 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
   }
 
   static getType() {
-    return FormTableType
+    return FORM_TABLE_TYPE
   }
 
   static clone(node: FormTableNode) {
@@ -62,7 +62,7 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
         })),
       },
       version: 1,
-      type: FormTableType,
+      type: FORM_TABLE_TYPE,
     }
   }
 
@@ -110,7 +110,7 @@ export function $createFormTableNode(payload: FormTableCommandPayload) {
           .fill(0)
           .map((_, colIndex) => {
             const cellId = uid()
-            const editorState = createEditor().parseEditorState(defaultEditorStateStr)
+            const editorState = createEditor().parseEditorState(DEFAULT_EDITOR_STATE_STRING)
             return {
               id: cellId,
               rowIndex,

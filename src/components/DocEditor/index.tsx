@@ -10,7 +10,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 
-import { FormTableNode, FormTablePlugin, InsertFormTableCommand } from './plugins/FormTable'
+import { FormTableNode, FormTablePlugin, INSERT_FROM_TABLE } from './plugins/FormTable'
 import InitialEditorStatePlugin from './plugins/InitialEditorStatePlugin'
 import { InsertSubfieldCommand, SubfieldNode, SubfieldPlugin } from './plugins/Subfield'
 import { SubfieldItemNode } from './plugins/SubfieldItem'
@@ -48,7 +48,7 @@ function EditorContent() {
         <header className='p-4 bg-gray-200 space-x-4'>
           <button onClick={onSave}>Save</button>
 
-          <button onClick={() => editor.dispatchCommand(InsertFormTableCommand, { rows: 6, cols: 4 })}>table</button>
+          <button onClick={() => editor.dispatchCommand(INSERT_FROM_TABLE, { rows: 6, cols: 4 })}>table</button>
 
           <button onClick={() => editor.dispatchCommand(InsertSubfieldCommand, { cols: 6 })}>subfield</button>
         </header>

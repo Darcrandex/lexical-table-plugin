@@ -11,7 +11,7 @@ import { prop, uniqBy } from 'ramda'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import TopCellMenus from './TopCellMenus'
-import { dataCellClassName, rowHeaderClassName } from './const'
+import { DATA_CELL, ROW_HEADER } from './const'
 import { FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
@@ -48,7 +48,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
         const cellsInRange: SelectedCell[] = []
 
         // 排除隐藏的单元格
-        const cellEles = Array.from(tableRef.current.querySelectorAll(`td.${dataCellClassName}:not(.hidden)`))
+        const cellEles = Array.from(tableRef.current.querySelectorAll(`td.${DATA_CELL}:not(.hidden)`))
 
         for (let index = 0; index < cellEles.length; index++) {
           const ele = cellEles[index]
@@ -168,7 +168,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           {props.rows?.map((row, rowIndex) => (
             <tr key={row.id}>
               {/* 行头 */}
-              <th id={row.id} className={clsx(rowHeaderClassName, 'bg-violet-400')} style={{ width: 24, height: 24 }}>
+              <th id={row.id} className={clsx(ROW_HEADER, 'bg-violet-400')} style={{ width: 24, height: 24 }}>
                 {rowIndex + 1}
               </th>
 
@@ -181,7 +181,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   rowSpan={cell.rowSpan}
                   colSpan={cell.colSpan}
                   className={clsx(
-                    dataCellClassName,
+                    DATA_CELL,
                     cell.hidden && 'hidden invisible',
                     selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
                   )}

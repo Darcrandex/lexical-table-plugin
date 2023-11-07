@@ -8,9 +8,9 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import clsx from 'clsx'
 import { NodeKey, createEditor } from 'lexical'
-import { clone, head, insertAll, isNotNil, prop, uniqBy } from 'ramda'
+import { clone, head, insertAll, prop, uniqBy } from 'ramda'
 import React, { useCallback, useMemo, useRef } from 'react'
-import { DEFAULT_CELL_WIDTH, defaultEditorStateStr } from './const'
+import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from './const'
 import { CellData, ColHeader, SelectedCell } from './types'
 import { $getFormTableProps, $setFormTableProps, uid } from './utils'
 
@@ -161,7 +161,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
             .fill(0)
             .map<CellData>((_, cellIndex) => {
               const cellId = uid()
-              const editorState = createEditor().parseEditorState(defaultEditorStateStr)
+              const editorState = createEditor().parseEditorState(DEFAULT_EDITOR_STATE_STRING)
 
               // 原来的行
               const replaceRow = prevRows.find((_, ridx) => ridx === rowIndex)
@@ -231,84 +231,82 @@ export default function TopCellMenus(props: TopCellMenusProps) {
 
   const insertCol = useCallback(
     (direction?: 'left' | 'right') => {
-      const colIndex = (head(props.selectedCells)?.colIndex || 0) + (direction === 'left' ? 0 : 1)
-      const colHeader: ColHeader = { id: uid(), width: DEFAULT_CELL_WIDTH }
-      const hiddenCells: CellData[] = []
-
       $setFormTableProps(editor, props.nodeKey, (prev) => {
         const prevRows = prev.rows || []
-        const flatCells = prevRows.reduce<CellData[]>((acc, row, i) => {
-          return acc.concat(
-            row.cells.map((cell, j) => {
-              return {
-                id: cell.id,
-                rowIndex: i,
-                colIndex: j,
-                rowSpan: cell.rowSpan,
-                colSpan: cell.colSpan,
-                hidden: cell.hidden,
-              }
-            })
-          )
-        }, [])
+        const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
 
-        const nextRows = prevRows.map((row, ridx) => {
-          const cellId = uid()
-          const editorState = createEditor().parseEditorState(defaultEditorStateStr)
-          const hiddenCell = flatCells.find((v) => v.colIndex === colIndex && v.rowIndex === ridx && v.hidden)
-          if (hiddenCell) {
-            hiddenCells.push(hiddenCell)
-          }
+        // 预插入的列索引
+        const colIndex = (head(props.selectedCells)?.colIndex || 0) + (direction === 'left' ? 0 : 1)
 
-          const newCell: CellData = {
-            id: cellId,
-            rowIndex: ridx,
-            colIndex,
-            nestedEditor: createEditor({ namespace: cellId, editable: false, editorState }),
-            hidden: isNotNil(hiddenCell),
-          }
+        // 预插入的列与当前表格中已合并的单元格相交部分的单元格
+        const intersectantCells = flattenCells.filter((v) => v.colIndex === colIndex)
 
-          return {
-            ...row,
-            cells: insertAll(colIndex, [newCell], row.cells),
-          }
-        })
-
-        console.log('hiddenCells', hiddenCells)
-        const shouldAddColSpanCells = uniqBy(
-          prop('id'),
-          hiddenCells.reduce<CellData[]>((acc, cur) => {
-            const cell = flatCells.find(
-              (v) =>
-                v.rowIndex === cur.rowIndex &&
-                cur.colIndex >= v.colIndex &&
-                cur.colIndex <= v.colIndex + (v.colSpan || 1) &&
-                !v.hidden
+        // 与列相交的需要隐藏的单元格
+        const shouldHideCells = intersectantCells
+          // 属于合并的单元格内的已经隐藏的单元格
+          .filter((v) => v.hidden)
+          .filter((v) => {
+            // 当前单元格所在列 === 所属合并单元格所在列
+            // 则不需要隐藏
+            const isSameColWithMergeCell = intersectantCells.some(
+              (m) =>
+                !m.hidden && // 非隐藏
+                m.rowSpan &&
+                m.rowSpan > 0 && // 是跨行的单元格(合并的单元格)
+                v.rowIndex >= m.rowIndex &&
+                v.rowIndex <= m.rowIndex + (m.rowSpan || 1)
             )
 
-            return cell ? acc.concat(cell) : acc
-          }, [])
-        )
+            return !isSameColWithMergeCell
+          })
 
-        console.log('shouldAddColSpanCells', shouldAddColSpanCells)
+        // 与列相交的合并的单元格(多个)
+        const shouldAddColSpanCells = shouldHideCells.reduce<CellData[]>((acc, curr) => {
+          const matched = flattenCells.find(
+            (m) =>
+              !m.hidden &&
+              m.colSpan &&
+              m.colSpan > 1 && // 是跨列的单元格
+              curr.colIndex >= m.colIndex &&
+              curr.colIndex <= m.colIndex + (m.colSpan || 1) &&
+              m.rowIndex === curr.rowIndex
+          )
+          return matched ? [...acc, matched] : acc
+        }, [])
 
-        const rowsWithColSpanUpdated = nextRows.map((row) => {
+        // 新的列头
+        const colHeader: ColHeader = { id: uid(), width: DEFAULT_CELL_WIDTH }
+
+        // 插入列
+        const rowsWithAppendCol = prevRows.map((row, rowIndex) => {
+          const id = uid()
+          const editorState = createEditor().parseEditorState(DEFAULT_EDITOR_STATE_STRING)
+          const cell: CellData = {
+            id,
+            rowIndex,
+            colIndex,
+            nestedEditor: createEditor({ namespace: id, editable: false, editorState }),
+            hidden: shouldHideCells.some((v) => v.rowIndex === rowIndex && v.colIndex === colIndex),
+          }
+
           return {
             ...row,
-            cells: row.cells.map((cell) => {
-              if (shouldAddColSpanCells.some((v) => v.id === cell.id)) {
-                return { ...cell, colSpan: (cell.colSpan || 0) + 1 }
-              } else {
-                return cell
-              }
-            }),
+            cells: insertAll(colIndex, [cell], row.cells),
           }
         })
+
+        // 相交的合并单元格扩展列宽
+        const rowsWithColspanUpdated = rowsWithAppendCol.map((row) => ({
+          ...row,
+          cells: row.cells.map((v) =>
+            shouldAddColSpanCells.some((m) => m.id === v.id) ? { ...v, colSpan: (v.colSpan || 1) + 1 } : v
+          ),
+        }))
 
         return {
           ...prev,
+          rows: rowsWithColspanUpdated,
           colHeaders: insertAll(colIndex, [colHeader], prev.colHeaders || []),
-          rows: rowsWithColSpanUpdated,
         }
       })
     },
