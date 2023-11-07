@@ -313,6 +313,97 @@ export default function TopCellMenus(props: TopCellMenusProps) {
     [editor, props.nodeKey, props.selectedCells]
   )
 
+  // 删除行列
+  const canRemove = useMemo(() => {
+    return props.selectedCells.length === 1
+  }, [props.selectedCells.length])
+
+  const removeCol = useCallback(() => {
+    $setFormTableProps(editor, props.nodeKey, (prev) => {
+      // 单元格可能是合并的单元格
+      // 删除时需要把横跨的所有列都删除
+      const startColIndex = head(props.selectedCells)?.colIndex || 0
+      const endColIndex = startColIndex + (head(props.selectedCells)?.colSpan || 1) - 1
+
+      const prevRows = prev.rows || []
+      const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
+
+      // 所在列的单元格
+      const cellsInCols = flattenCells.filter((v) => v.colIndex >= startColIndex && v.colIndex <= endColIndex)
+
+      // 如果存在相交的合并单元格
+      // 判断合并单元格是否完全落入列范围内
+      // 如果是则删除,否则保留
+      const shouldRemoveCells = cellsInCols.filter((v) => v.colIndex + (v.colSpan || 1) - 1 <= endColIndex)
+
+      // 被隐藏的单元格
+      const hiddenCells = cellsInCols.filter((v) => v.hidden)
+
+      // 右侧溢出的合并单元格
+      const rightOverflowCells = cellsInCols.filter((v) => v.colSpan && v.colIndex + (v.colSpan || 1) - 1 > endColIndex)
+
+      // 根据列范围内隐藏的单元格找到其所属的合并单元格
+      // 左侧溢出的合并单元格
+      const leftOverflowCells = hiddenCells.reduce<CellData[]>((acc, curr) => {
+        const matched = flattenCells.find(
+          (v) =>
+            v.rowIndex === curr.rowIndex && // 同一行
+            v.colIndex < startColIndex && // 左侧
+            v.colIndex + (v.colSpan || 1) - 1 >= startColIndex &&
+            v.colIndex + (v.colSpan || 1) - 1 <= endColIndex
+        )
+        return matched ? [...acc, matched] : acc
+      }, [])
+
+      // 全溢出的合并单元格
+      const allOverflowCells = hiddenCells.reduce<CellData[]>((acc, curr) => {
+        const matched = flattenCells.find(
+          (v) =>
+            v.rowIndex === curr.rowIndex && // 同一行
+            v.colIndex < startColIndex && // 左侧
+            v.colIndex + (v.colSpan || 1) - 1 > endColIndex // 右侧
+        )
+        return matched ? [...acc, matched] : acc
+      }, [])
+
+      // 先删除相交的单元格
+      const rowsWithRemovedCells = prevRows.map((row) => ({
+        ...row,
+        cells: row.cells.filter((v) => !shouldRemoveCells.some((m) => m.id === v.id)),
+      }))
+
+      // 修改溢出的合并单元格的 colSpan
+      const rowsWithColspanUpdated = rowsWithRemovedCells.map((row) => ({
+        ...row,
+        cells: row.cells.map((v) => {
+          const currColSpan = v.colSpan || 1
+
+          if (rightOverflowCells.some((m) => m.id === v.id)) {
+            return { ...v, colSpan: currColSpan - (endColIndex - v.colIndex) - 1 }
+          }
+
+          if (leftOverflowCells.some((m) => m.id === v.id)) {
+            return { ...v, colSpan: currColSpan - (v.colIndex + currColSpan - startColIndex) }
+          }
+
+          if (allOverflowCells.some((m) => m.id === v.id)) {
+            return { ...v, colSpan: currColSpan - (endColIndex - startColIndex + 1) }
+          }
+
+          return v
+        }),
+      }))
+
+      return {
+        ...prev,
+        colHeaders: prev.colHeaders?.filter((_, i) => i < startColIndex || i > endColIndex),
+        rows: rowsWithColspanUpdated,
+      }
+    })
+
+    props.setSelectedCells([])
+  }, [editor, props])
+
   return (
     <>
       <caption
@@ -351,6 +442,14 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           onClick={() => insertCol()}
         >
           向右插入列
+        </button>
+
+        <button
+          disabled={!canRemove}
+          className='disabled:text-gray-400 disabled:cursor-not-allowed'
+          onClick={() => removeCol()}
+        >
+          删除所在列
         </button>
 
         <button>背景色</button>

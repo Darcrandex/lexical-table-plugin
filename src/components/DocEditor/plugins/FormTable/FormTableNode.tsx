@@ -9,7 +9,6 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
   __props: FormTableCompProps = {}
 
   constructor(props: FormTableCompProps, key?: NodeKey) {
-    console.log('constructor', props)
     super(key)
 
     this.__props = props
@@ -24,7 +23,7 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
   }
 
   static importJSON(payload: FormTableData) {
-    console.log('importJSON', payload)
+    // console.log('importJSON', payload)
 
     // 根据保存的数据重新实例化表格
 
@@ -46,7 +45,7 @@ export class FormTableNode extends DecoratorNode<ReactNode> {
   }
 
   exportJSON(): FormTableData {
-    console.log('exportJSON', this.__props)
+    // console.log('exportJSON', this.__props)
 
     return {
       props: {
