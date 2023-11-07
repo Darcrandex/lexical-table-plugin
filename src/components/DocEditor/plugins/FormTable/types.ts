@@ -35,7 +35,4 @@ export type FormTableCommandPayload = {
 export type FormTableData = Spread<{ props: FormTableCompProps }, SerializedLexicalNode>
 
 // 选区所选单元格
-export type SelectedCell = Pick<CellData, 'id' | 'colSpan' | 'rowSpan'> & {
-  rowIndex: number
-  colIndex: number
-}
+export type SelectedCell = Omit<CellData, 'nestedEditor' | 'stateData'>

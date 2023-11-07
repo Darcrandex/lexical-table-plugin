@@ -12,7 +12,7 @@ import { clone, head, insertAll, prop, uniqBy } from 'ramda'
 import React, { useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from './const'
 import { CellData, ColHeader, SelectedCell } from './types'
-import { $getFormTableProps, $setFormTableProps, uid } from './utils'
+import { $setFormTableProps, uid } from './utils'
 
 export type TopCellMenusProps = {
   selectedCells: SelectedCell[]
@@ -91,51 +91,55 @@ export default function TopCellMenus(props: TopCellMenusProps) {
   }, [props.selectedCells])
 
   const unmergeCells = useCallback(() => {
-    const rows = clone($getFormTableProps(editor, props.nodeKey).rows) || []
-    const shouldUnmergeCells = props.selectedCells.filter((v) => (v.rowSpan || 1) + (v.colSpan || 1) > 2)
-
-    // 找到需要重新显示的单元格
-    const shouldVisibleCells: SelectedCell[] = []
-    for (let i = 0; i < shouldUnmergeCells.length; i++) {
-      const item = shouldUnmergeCells[i]
-
-      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-        const row = rows[rowIndex]
-
-        for (let colIndex = 0; colIndex < row.cells.length; colIndex++) {
-          const cell = row.cells[colIndex]
-          const maxRowIndex = item.rowIndex + (item.rowSpan || 1) - 1
-          const maxColIndex = item.colIndex + (item.colSpan || 1) - 1
-          if (
-            cell.id !== item.id &&
-            rowIndex >= item.rowIndex &&
-            rowIndex <= maxRowIndex &&
-            colIndex >= item.colIndex &&
-            colIndex <= maxColIndex
-          ) {
-            shouldVisibleCells.push({ id: cell.id, rowIndex, colIndex })
-          }
-        }
-      }
-    }
+    // 更新后选中的单元格
+    const nextSelectedCells = clone(props.selectedCells)
 
     $setFormTableProps(editor, props.nodeKey, (prev) => {
-      return {
-        ...prev,
-        rows: prev.rows?.map((row) => {
-          return {
-            ...row,
-            cells: row.cells
-              // 重新显示被隐藏的单元格
-              .map((v) => (shouldVisibleCells.some((m) => m.id === v.id) ? { ...v, hidden: undefined } : v))
-              // 还原跨行跨列
-              .map((v) => ({ ...v, rowSpan: undefined, colSpan: undefined })),
-          }
-        }),
-      }
+      const prevRows = prev.rows || []
+      const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
+
+      // 选区中的合并单元格
+      const mergeCells = props.selectedCells.filter((v) => (v.colSpan || 1) + (v.rowSpan || 1) > 2)
+
+      // 合并单元格内部被隐藏的单元格
+      const hiddenCells = mergeCells.reduce<CellData[]>((acc, curr) => {
+        const minRowIndex = curr.rowIndex
+        const maxRowIndex = curr.rowIndex + (curr.rowSpan || 1) - 1
+        const minColIndex = curr.colIndex
+        const maxColIndex = curr.colIndex + (curr.colSpan || 1) - 1
+
+        const cells = flattenCells.filter(
+          (v) =>
+            v.rowIndex >= minRowIndex &&
+            v.rowIndex <= maxRowIndex &&
+            v.colIndex >= minColIndex &&
+            v.colIndex <= maxColIndex &&
+            v.hidden
+        )
+        return acc.concat(cells)
+      }, [])
+
+      // 添加重新显示的单元格到选区
+      nextSelectedCells.push(...hiddenCells)
+
+      // 重置原来被合并的单元格的跨行跨列
+      const rowsWithResetSpan = prevRows.map((row) => ({
+        ...row,
+        cells: row.cells.map((v) =>
+          mergeCells.some((m) => m.id === v.id) ? { ...v, rowSpan: undefined, colSpan: undefined } : v
+        ),
+      }))
+
+      // 重新显示之前因被合并而隐藏的单元格
+      const rowsWithReshowCells = rowsWithResetSpan.map((row) => ({
+        ...row,
+        cells: row.cells.map((v) => (hiddenCells.some((m) => m.id === v.id) ? { ...v, hidden: undefined } : v)),
+      }))
+
+      return { ...prev, rows: rowsWithReshowCells }
     })
 
-    props.setSelectedCells((prev) => [...prev, ...shouldVisibleCells])
+    props.setSelectedCells(nextSelectedCells)
   }, [editor, props])
 
   // 插入行列
