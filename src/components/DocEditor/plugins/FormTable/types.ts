@@ -6,6 +6,8 @@ export type RowItem = { id: string; height?: number; cells: CellData[] }
 
 export type CellData = {
   id: string
+  rowIndex: number
+  colIndex: number
   colSpan?: number
   rowSpan?: number
 

@@ -8,7 +8,7 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import clsx from 'clsx'
 import { NodeKey, createEditor } from 'lexical'
-import { clone, head, insertAll, prop, uniqBy } from 'ramda'
+import { clone, head, insertAll, isNotNil, prop, uniqBy } from 'ramda'
 import React, { useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_CELL_WIDTH, defaultEditorStateStr } from './const'
 import { CellData, ColHeader, SelectedCell } from './types'
@@ -175,6 +175,8 @@ export default function TopCellMenus(props: TopCellMenusProps) {
 
               return {
                 id: cellId,
+                rowIndex,
+                colIndex: cellIndex,
                 nestedEditor: createEditor({ namespace: cellId, editable: false, editorState }),
                 hidden: hiddenCellIndexArr?.includes(cellIndex),
               }
@@ -193,16 +195,17 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         }, [])
 
         console.log('flatCells', flatCells)
-        const shouldAddRowSpanCells = intersectantCellsIndex.reduce<any[]>((acc, cur) => {
-          const cell = flatCells.find((v) => v.colIndex === cur.colIndex && v.rowIndex + v.rowSpan >= cur.rowIndex)
-          if (cell) {
-            return [...acc, cell]
-          }
+        const shouldAddRowSpanCells = uniqBy(
+          prop('id'),
+          intersectantCellsIndex.reduce<any[]>((acc, cur) => {
+            const cell = flatCells.find((v) => v.colIndex === cur.colIndex && v.rowIndex + v.rowSpan >= cur.rowIndex)
+            if (cell) {
+              return [...acc, cell]
+            }
 
-          return acc
-        }, [])
-
-        console.log('shouldAddRowSpanCells', uniqBy(prop('id'), shouldAddRowSpanCells))
+            return acc
+          }, [])
+        )
 
         const rowsWithRowSpanUpdated = nextRows.map((row) => {
           return {
@@ -230,15 +233,39 @@ export default function TopCellMenus(props: TopCellMenusProps) {
     (direction?: 'left' | 'right') => {
       const colIndex = (head(props.selectedCells)?.colIndex || 0) + (direction === 'left' ? 0 : 1)
       const colHeader: ColHeader = { id: uid(), width: DEFAULT_CELL_WIDTH }
+      const hiddenCells: CellData[] = []
 
       $setFormTableProps(editor, props.nodeKey, (prev) => {
-        const nextRows = prev.rows?.map((row) => {
+        const prevRows = prev.rows || []
+        const flatCells = prevRows.reduce<CellData[]>((acc, row, i) => {
+          return acc.concat(
+            row.cells.map((cell, j) => {
+              return {
+                id: cell.id,
+                rowIndex: i,
+                colIndex: j,
+                rowSpan: cell.rowSpan,
+                colSpan: cell.colSpan,
+                hidden: cell.hidden,
+              }
+            })
+          )
+        }, [])
+
+        const nextRows = prevRows.map((row, ridx) => {
           const cellId = uid()
           const editorState = createEditor().parseEditorState(defaultEditorStateStr)
+          const hiddenCell = flatCells.find((v) => v.colIndex === colIndex && v.rowIndex === ridx && v.hidden)
+          if (hiddenCell) {
+            hiddenCells.push(hiddenCell)
+          }
 
           const newCell: CellData = {
             id: cellId,
+            rowIndex: ridx,
+            colIndex,
             nestedEditor: createEditor({ namespace: cellId, editable: false, editorState }),
+            hidden: isNotNil(hiddenCell),
           }
 
           return {
@@ -247,10 +274,41 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           }
         })
 
+        console.log('hiddenCells', hiddenCells)
+        const shouldAddColSpanCells = uniqBy(
+          prop('id'),
+          hiddenCells.reduce<CellData[]>((acc, cur) => {
+            const cell = flatCells.find(
+              (v) =>
+                v.rowIndex === cur.rowIndex &&
+                cur.colIndex >= v.colIndex &&
+                cur.colIndex <= v.colIndex + (v.colSpan || 1) &&
+                !v.hidden
+            )
+
+            return cell ? acc.concat(cell) : acc
+          }, [])
+        )
+
+        console.log('shouldAddColSpanCells', shouldAddColSpanCells)
+
+        const rowsWithColSpanUpdated = nextRows.map((row) => {
+          return {
+            ...row,
+            cells: row.cells.map((cell) => {
+              if (shouldAddColSpanCells.some((v) => v.id === cell.id)) {
+                return { ...cell, colSpan: (cell.colSpan || 0) + 1 }
+              } else {
+                return cell
+              }
+            }),
+          }
+        })
+
         return {
           ...prev,
           colHeaders: insertAll(colIndex, [colHeader], prev.colHeaders || []),
-          rows: nextRows,
+          rows: rowsWithColSpanUpdated,
         }
       })
     },

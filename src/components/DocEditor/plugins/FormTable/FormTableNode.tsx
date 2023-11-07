@@ -104,15 +104,17 @@ export function $createFormTableNode(payload: FormTableCommandPayload) {
 
     rows: Array(payload.rows)
       .fill(0)
-      .map(() => ({
+      .map((_, rowIndex) => ({
         id: uid(),
         cells: Array(payload.cols)
           .fill(0)
-          .map(() => {
+          .map((_, colIndex) => {
             const cellId = uid()
             const editorState = createEditor().parseEditorState(defaultEditorStateStr)
             return {
               id: cellId,
+              rowIndex,
+              colIndex,
               nestedEditor: createEditor({ namespace: cellId, editable: false, editorState }),
             }
           }),
