@@ -9,10 +9,11 @@ import clsx from 'clsx'
 import { NodeKey, createEditor } from 'lexical'
 import { clone, head, insertAll, mergeDeepRight, prop, uniqBy } from 'ramda'
 import { CSSProperties, useCallback, useMemo, useRef } from 'react'
-import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from './const'
-import { useSelectedCells } from './store'
-import { CellData, ColHeader } from './types'
-import { $setFormTableProps, uid } from './utils'
+import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from '../const'
+import { useSelectedCells } from '../store'
+import { CellData, ColHeader } from '../types'
+import { $setFormTableProps, uid } from '../utils'
+import BorderTools from './BorderTools'
 
 export type TopCellMenusProps = {
   nodeKey: NodeKey
@@ -616,6 +617,8 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         >
           背景色
         </button>
+
+        <BorderTools nodeKey={props.nodeKey} />
       </section>
     </>
   )

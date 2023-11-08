@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import EditableCell from './EditableCell'
 import TopCellMenus from './TopCellMenus'
+import { BordersRender } from './TopCellMenus/BorderTools'
 import { DATA_CELL, ROW_HEADER } from './const'
 import { useSelectedCells } from './store'
 import { FormTableCompProps, SelectedCell } from './types'
@@ -163,7 +164,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
       <table ref={tableRef} className='relative select-none overflow-y-hidden'>
         <thead>
           <tr>
-            <th id='origin' className='bg-orange-400' style={{ width: 24, height: 24 }}></th>
+            <th id='origin' className='bg-orange-400'></th>
 
             {/* 列头 */}
             {props.colHeaders?.map((item, colIndex) => (
@@ -176,7 +177,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           {props.rows?.map((row, rowIndex) => (
             <tr key={row.id}>
               {/* 行头 */}
-              <th id={row.id} className={clsx(ROW_HEADER, 'bg-violet-400')} style={{ width: 24, height: 24 }}>
+              <th id={row.id} className={clsx(ROW_HEADER, 'bg-violet-400 px-2')}>
                 {rowIndex + 1}
               </th>
 
@@ -191,8 +192,9 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   colSpan={cell.colSpan}
                   className={clsx(
                     DATA_CELL,
+                    'relative border p-0',
                     cell.hidden && 'hidden invisible',
-                    selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
+                    selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-white'
                   )}
                   style={cell.style}
                   onClick={() =>
@@ -203,6 +205,8 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   onMouseDown={(e) => onSelectStart(e.nativeEvent)}
                 >
                   {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
+
+                  <BordersRender borders={cell.borders} />
                 </td>
               ))}
             </tr>

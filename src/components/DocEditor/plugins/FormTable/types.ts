@@ -25,6 +25,9 @@ export type CellData = {
 
   // 自定义样式
   style?: CSSProperties
+
+  // 自定义边框
+  borders?: CellBorderSettings[]
 }
 
 export type FormTableCompProps = {
@@ -43,3 +46,9 @@ export type FormTableData = Spread<{ props: FormTableCompProps }, SerializedLexi
 
 // 选区所选单元格
 export type SelectedCell = Omit<CellData, 'nestedEditor' | 'stateData'>
+
+// 表格边框配置
+export type CellBorderSettings = {
+  direction: 'left' | 'top' | 'right' | 'bottom'
+  color?: string
+}

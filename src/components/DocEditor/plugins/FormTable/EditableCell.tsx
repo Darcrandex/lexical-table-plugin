@@ -81,7 +81,7 @@ function InnerContent() {
             <ContentEditable
               className={clsx(
                 'm-1 p-1 outline-none min-h-[22px]',
-                isEditable ? 'bg-green-200' : 'bg-indigo-400 select-none pointer-events-none'
+                isEditable ? 'bg-green-200' : 'select-none pointer-events-none'
               )}
             />
           }

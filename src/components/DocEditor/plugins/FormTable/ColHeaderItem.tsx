@@ -86,20 +86,20 @@ export default function ColHeaderItem(props: { col: ColHeader; index: number; no
       <th
         ref={elRef}
         id={props.col.id}
-        className={clsx(COL_HEADER, 'bg-pink-400 relative')}
+        className={clsx(COL_HEADER, 'bg-pink-400 relative py-2')}
         style={{ width: resizing ? currWidth : props.col.width }}
       >
         {String.fromCharCode(65 + props.index)}
 
         <i
-          className='group/col-resizer absolute z-10 top-0 right-0 bottom-0 w-4 translate-x-1/2 bg-black cursor-col-resize'
+          className='group/col-resizer absolute z-10 top-0 right-0 bottom-0 w-4 translate-x-1/2 cursor-col-resize'
           onMouseDown={(e) => {
             e.stopPropagation()
             onResizeStart(e.nativeEvent)
           }}
         >
           <i
-            className='absolute top-0 left-1/2 border border-dashed pointer-events-none transition-all opacity-0 group-hover/col-resizer:opacity-100'
+            className='absolute top-0 left-1/2 w-[1px] -translate-x-1/2 bg-blue-400 pointer-events-none transition-all opacity-0 group-hover/col-resizer:opacity-100'
             style={{ height: tableElementHeight }}
           ></i>
         </i>

@@ -13,3 +13,5 @@ export const ROW_HEADER = 'form-table_row-header'
 export const DATA_CELL = 'form-table_data-cell'
 
 export const INSERT_FROM_TABLE = createCommand<FormTableCommandPayload | undefined>('insert-form-table-block-node')
+
+export const DEFAULT_CELL_BORDER_COLOR = '#333'
