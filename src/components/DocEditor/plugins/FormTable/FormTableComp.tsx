@@ -15,7 +15,7 @@ import TopCellMenus from './TopCellMenus'
 import BordersRender from './TopCellMenus/BordersRender'
 import { DATA_CELL, ROW_HEADER } from './const'
 import { useSelectedCells } from './store'
-import { FormTableCompProps, SelectedCell } from './types'
+import { CellData, FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
@@ -152,6 +152,13 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
     setSelectedCells([])
   }, [tableRef, menuRef])
 
+  // 全选
+  const onSelectAll = useCallback(() => {
+    const cells = props.rows?.reduce<CellData[]>((acc, row) => acc.concat(row.cells), []) || []
+    const visibleCells = cells?.filter((v) => !v.hidden)
+    setSelectedCells(visibleCells)
+  }, [props.rows, setSelectedCells])
+
   return (
     <>
       <h1>FormTableComp</h1>
@@ -164,7 +171,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
       <table ref={tableRef} className='relative select-none overflow-y-hidden'>
         <thead>
           <tr>
-            <th id='origin' className='bg-orange-400'></th>
+            <th id='origin' className='bg-orange-400' onClick={onSelectAll}></th>
 
             {/* 列头 */}
             {props.colHeaders?.map((item, colIndex) => (

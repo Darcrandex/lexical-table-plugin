@@ -31,14 +31,13 @@ export default function BorderTools(props: { nodeKey: NodeKey }) {
 
                 const borderConfigs: Record<string, CellBorderSettings[]> = {
                   all: [{ direction: 'left' }, { direction: 'top' }, { direction: 'right' }, { direction: 'bottom' }],
-                  empty: [],
                   left: [{ direction: 'left' }],
                   top: [{ direction: 'top' }],
                   bottom: [{ direction: 'bottom' }],
                   right: [{ direction: 'right' }],
                 }
 
-                borders = uniqBy(prop('direction'), borders.concat(borderConfigs[type]))
+                borders = type === 'empty' ? [] : uniqBy(prop('direction'), borders.concat(borderConfigs[type]))
 
                 return { ...cell, borders }
               }
