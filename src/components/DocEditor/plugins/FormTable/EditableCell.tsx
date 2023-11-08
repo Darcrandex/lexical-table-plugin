@@ -80,7 +80,7 @@ function InnerContent() {
           contentEditable={
             <ContentEditable
               className={clsx(
-                'm-4 p-4 outline-none min-h-[22px]',
+                'm-1 p-1 outline-none min-h-[22px]',
                 isEditable ? 'bg-green-200' : 'bg-indigo-400 select-none pointer-events-none'
               )}
             />

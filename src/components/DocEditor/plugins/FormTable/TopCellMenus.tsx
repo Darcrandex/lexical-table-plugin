@@ -508,7 +508,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
       <section
         ref={elRef}
         className={clsx(
-          'absolute left-0 top-0 right-0 flex space-x-4 p-2 -translate-y-full bg-lime-500 transition-all',
+          'absolute left-0 top-0 right-0 flex space-x-4 p-2 -translate-y-full bg-lime-500 transition-all flex-wrap',
           selectedCells.length > 0 ? 'visible opacity-100' : 'invisible opacity-0'
         )}
       >

@@ -8,7 +8,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { COL_HEADER, DEFAULT_CELL_WIDTH } from './const'
+import { COL_HEADER, DEFAULT_CELL_WIDTH, MIN_CELL_WIDTH } from './const'
 import { ColHeader } from './types'
 import { $setFormTableProps } from './utils'
 
@@ -56,7 +56,7 @@ export default function ColHeaderItem(props: { col: ColHeader; index: number; no
       }
 
       const dx = e.clientX - startPos.x
-      setCurrWidth(prevWidth + dx)
+      setCurrWidth(Math.max(MIN_CELL_WIDTH, prevWidth + dx))
     },
     [onResizeEnd, prevWidth, resizing, startPos.x]
   )

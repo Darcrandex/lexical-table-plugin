@@ -2,7 +2,8 @@ import { createCommand } from 'lexical'
 import { FormTableCommandPayload } from './types'
 
 export const FORM_TABLE_TYPE = 'form-table-node'
-export const DEFAULT_CELL_WIDTH = 200
+export const DEFAULT_CELL_WIDTH = 220
+export const MIN_CELL_WIDTH = 100
 
 export const DEFAULT_EDITOR_STATE_STRING =
   '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'

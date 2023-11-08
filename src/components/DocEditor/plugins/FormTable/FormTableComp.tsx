@@ -10,6 +10,7 @@ import { NodeKey } from 'lexical'
 import { prop, uniqBy } from 'ramda'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
+import EditableCell from './EditableCell'
 import TopCellMenus from './TopCellMenus'
 import { DATA_CELL, ROW_HEADER } from './const'
 import { useSelectedCells } from './store'
@@ -152,7 +153,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
       <h1>FormTableComp</h1>
 
       {/* 单元格功能菜单 */}
-      <section className='relative'>
+      <section ref={menuRef} className='relative'>
         <TopCellMenus nodeKey={props.nodeKey} />
       </section>
 
@@ -197,11 +198,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   }
                   onMouseDown={(e) => onSelectStart(e.nativeEvent)}
                 >
-                  <div className='h-full p-4 border'>
-                    ({rowIndex},{cellIndex})
-                  </div>
-
-                  {/* {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />} */}
+                  {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
                 </td>
               ))}
             </tr>
