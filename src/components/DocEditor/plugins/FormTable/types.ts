@@ -1,4 +1,5 @@
 import { LexicalEditor, SerializedLexicalNode, Spread } from 'lexical'
+import { CSSProperties } from 'react'
 
 export type ColHeader = { id: string; width?: number }
 
@@ -21,6 +22,9 @@ export type CellData = {
 
   // 用于隐藏那些被合并，需要删除的单元格
   hidden?: boolean
+
+  // 自定义样式
+  style?: CSSProperties
 }
 
 export type FormTableCompProps = {

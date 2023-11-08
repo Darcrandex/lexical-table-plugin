@@ -18,6 +18,7 @@ import { FormTableCompProps, SelectedCell } from './types'
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
   const tableRef = useRef<HTMLTableElement>(null)
+  const menuRef = useRef<HTMLElement>(null)
   const { selectedCells, setSelectedCells } = useSelectedCells()
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
@@ -144,7 +145,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
   // 点击外部清空
   useClickAway(() => {
     setSelectedCells([])
-  }, tableRef)
+  }, [tableRef, menuRef])
 
   return (
     <>
@@ -188,6 +189,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                     cell.hidden && 'hidden invisible',
                     selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-blue-300'
                   )}
+                  style={cell.style}
                   onClick={() =>
                     setSelectedCells([
                       { id: cell.id, rowIndex, colIndex: cellIndex, rowSpan: cell.rowSpan, colSpan: cell.colSpan },

@@ -9,7 +9,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import clsx from 'clsx'
 import { NodeKey, createEditor } from 'lexical'
 import { clone, head, insertAll, prop, uniqBy } from 'ramda'
-import { useCallback, useMemo, useRef } from 'react'
+import { CSSProperties, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from './const'
 import { useSelectedCells } from './store'
 import { CellData, ColHeader, SelectedCell } from './types'
@@ -481,6 +481,28 @@ export default function TopCellMenus(props: TopCellMenusProps) {
     setSelectedCells([])
   }, [editor, props.nodeKey, selectedCells, setSelectedCells])
 
+  // 修改单元格样式
+  const canSetStyles = useMemo(() => selectedCells.length > 0, [selectedCells])
+  const setCellStyle = useCallback(
+    (style: CSSProperties) => {
+      $setFormTableProps(editor, props.nodeKey, (prev) => {
+        return {
+          ...prev,
+          rows: prev.rows?.map((row) => ({
+            ...row,
+            cells: row.cells.map((cell) => {
+              if (selectedCells.some((v) => v.id === cell.id)) {
+                return { ...cell, style }
+              }
+              return cell
+            }),
+          })),
+        }
+      })
+    },
+    [editor, props.nodeKey, selectedCells]
+  )
+
   return (
     <>
       <section
@@ -537,7 +559,13 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           删除所在行
         </button>
 
-        <button>背景色</button>
+        <button
+          disabled={!canSetStyles}
+          className='disabled:text-gray-400 disabled:cursor-not-allowed'
+          onClick={() => setCellStyle({ background: 'red' })}
+        >
+          背景色
+        </button>
       </section>
     </>
   )
