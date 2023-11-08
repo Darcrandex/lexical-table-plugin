@@ -72,7 +72,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           if (v.id === topLeftCell?.id) {
             const ds = JSON.parse(DEFAULT_EDITOR_STATE_STRING)
             const data = mergeDeepRight(ds, { root: { children: mergedChildren } })
-            v.nestedEditor?.setEditorState(editor.parseEditorState(JSON.stringify(data)))
+            v.nestedEditor?.setEditorState(createEditor().parseEditorState(JSON.stringify(data)))
 
             return { ...v, rowSpan, colSpan }
           }
@@ -486,7 +486,18 @@ export default function TopCellMenus(props: TopCellMenusProps) {
             )
 
             if (matchedMergedCell) {
-              return { ...v, hidden: undefined, rowSpan: (matchedMergedCell.rowSpan || 1) - 1 }
+              const state = matchedMergedCell.nestedEditor?.getEditorState().toJSON()
+              if (state && v.nestedEditor) {
+                v.nestedEditor.setEditorState(createEditor().parseEditorState(JSON.stringify(state)))
+              }
+
+              return {
+                ...v,
+                hidden: undefined,
+                rowSpan: (matchedMergedCell.rowSpan || 1) - 1,
+                colSpan: matchedMergedCell.colSpan,
+                style: matchedMergedCell.style,
+              }
             }
           }
 
