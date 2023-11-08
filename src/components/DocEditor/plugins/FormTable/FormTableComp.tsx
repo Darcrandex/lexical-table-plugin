@@ -60,9 +60,12 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
 
           const cellRect = ele.getBoundingClientRect()
           const rowIndex = Number.parseInt(ele.getAttribute('data-row-index') || '0')
+          const colIndex = Number.parseInt(ele.getAttribute('data-col-index') || '0')
+
           // 由于因合并单元格而被删除的单元格是通过隐藏实现的（DOM结构不变）
           // 因此单元格的索引值相当于列的索引值
-          const colIndex = Number.parseInt(ele.getAttribute('data-cell-index') || '0')
+          // const colIndex = Number.parseInt(ele.getAttribute('data-cell-index') || '0')
+
           const rowSpan = Number.parseInt(ele.getAttribute('rowspan') || '1')
           const colSpan = Number.parseInt(ele.getAttribute('colspan') || '1')
           cells.push({ id, rowIndex, colIndex, rowSpan, colSpan })
@@ -181,7 +184,8 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                 <td
                   key={cell.id}
                   id={cell.id}
-                  data-row-index={rowIndex}
+                  data-row-index={cell.rowIndex}
+                  data-col-index={cell.colIndex}
                   data-cell-index={cellIndex}
                   rowSpan={cell.rowSpan}
                   colSpan={cell.colSpan}

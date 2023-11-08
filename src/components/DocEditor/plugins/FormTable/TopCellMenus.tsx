@@ -1,18 +1,17 @@
 /**
  * @name TopCellMenus
  * @description 顶部单元格菜单
- * @description 需要确保父级的 table 有定位属性
  * @author darcrand
  */
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import clsx from 'clsx'
 import { NodeKey, createEditor } from 'lexical'
-import { clone, head, insertAll, prop, uniqBy } from 'ramda'
+import { clone, head, insertAll, mergeDeepRight, prop, uniqBy } from 'ramda'
 import { CSSProperties, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from './const'
 import { useSelectedCells } from './store'
-import { CellData, ColHeader, SelectedCell } from './types'
+import { CellData, ColHeader } from './types'
 import { $setFormTableProps, uid } from './utils'
 
 export type TopCellMenusProps = {
@@ -30,48 +29,62 @@ export default function TopCellMenus(props: TopCellMenusProps) {
   }, [selectedCells])
 
   const mergeCells = useCallback(() => {
-    // 左上角需要修改的单元格
-    let targetCell: SelectedCell = {
-      id: '',
-      colIndex: Infinity,
-      rowIndex: Infinity,
-    }
+    const minRowIndex = Math.min(...selectedCells.map((v) => v.rowIndex))
+    const minColIndex = Math.min(...selectedCells.map((v) => v.colIndex))
+    const maxRowIndex = Math.max(...selectedCells.map((v) => v.rowIndex))
+    const maxColIndex = Math.max(...selectedCells.map((v) => v.colIndex))
+    const rowSpan = maxRowIndex - minRowIndex + 1
+    const colSpan = maxColIndex - minColIndex + 1
 
-    const rowSpan =
-      1 + Math.max(...selectedCells.map((v) => v.rowIndex)) - Math.min(...selectedCells.map((v) => v.rowIndex))
-    const colSpan =
-      1 + Math.max(...selectedCells.map((v) => v.colIndex)) - Math.min(...selectedCells.map((v) => v.colIndex))
-
-    // 找到最左上角的单元格,并设置新的行列数
-    for (let index = 0; index < selectedCells.length; index++) {
-      const item = selectedCells[index]
-      if (item.rowIndex < targetCell.rowIndex || item.colIndex < targetCell.colIndex) {
-        targetCell = { ...item, rowSpan, colSpan }
-        break
-      }
-    }
-
-    // 需要被隐藏的单元格
-    const removeCellIds = selectedCells.filter((v) => v.id !== targetCell.id).map((v) => v.id)
+    const topLeftCell = selectedCells.find((v) => v.rowIndex === minRowIndex && v.colIndex === minColIndex)
+    const shouldHideCells = selectedCells.filter((v) => v.rowIndex !== minRowIndex || v.colIndex !== minColIndex)
 
     $setFormTableProps(editor, props.nodeKey, (prev) => {
-      return {
-        ...prev,
-        rows: prev.rows?.map((row) => {
+      const prevRows = prev.rows || []
+      const flatCells = prevRows.reduce<CellData[]>((acc, row) => [...acc, ...row.cells], [])
+
+      // 将需要合并的单元格以及它包含的所有单元格的内容合并
+      const mergedChildren = flatCells
+        .filter((m) => m.id === topLeftCell?.id || shouldHideCells.some((v) => v.id === m.id))
+        .reduce<any[]>((acc, curr) => {
+          if (curr.nestedEditor) {
+            const state = curr.nestedEditor.getEditorState().toJSON()
+            acc.push(...state.root.children)
+          }
+          return acc
+        }, [])
+
+      const rowsWithHiddenCells = prevRows.map((row) => ({
+        ...row,
+        cells: row.cells.map((cell) => {
+          // 清空内容
+          cell.nestedEditor?.setEditorState(editor.parseEditorState(DEFAULT_EDITOR_STATE_STRING))
           return {
-            ...row,
-            cells: row.cells
-              // （隐式）删除其他单元格
-              .map((v) => ({ ...v, hidden: v.hidden || removeCellIds.includes(v.id) }))
-              // 再修改跨行跨列
-              // 合并 editorState
-              .map((v) => (v.id === targetCell.id ? { ...v, rowSpan, colSpan } : v)),
+            ...cell,
+            hidden: cell.hidden || shouldHideCells.some((v) => v.id === cell.id),
           }
         }),
-      }
+      }))
+
+      const rowsWithSpanUpdated = rowsWithHiddenCells.map((row) => ({
+        ...row,
+        cells: row.cells.map((v) => {
+          if (v.id === topLeftCell?.id) {
+            const ds = JSON.parse(DEFAULT_EDITOR_STATE_STRING)
+            const data = mergeDeepRight(ds, { root: { children: mergedChildren } })
+            v.nestedEditor?.setEditorState(editor.parseEditorState(JSON.stringify(data)))
+
+            return { ...v, rowSpan, colSpan }
+          }
+
+          return v
+        }),
+      }))
+
+      return { ...prev, rows: rowsWithSpanUpdated }
     })
 
-    setSelectedCells([targetCell])
+    !!topLeftCell && setSelectedCells([topLeftCell])
   }, [editor, props.nodeKey, selectedCells, setSelectedCells])
 
   // 拆分单元格
@@ -213,9 +226,18 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           }
         })
 
+        // 更新索引
+        const rowsWithIndexUpdated = rowsWithRowSpanUpdated.map((row, i) => {
+          return {
+            ...row,
+            rowIndex: i,
+            cells: row.cells.map((v, j) => ({ ...v, rowIndex: i, colIndex: j })),
+          }
+        })
+
         return {
           ...prev,
-          rows: rowsWithRowSpanUpdated,
+          rows: rowsWithIndexUpdated,
         }
       })
     },
@@ -296,9 +318,18 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           ),
         }))
 
+        // 更新索引
+        const rowsWithIndexUpdated = rowsWithColspanUpdated.map((row, i) => {
+          return {
+            ...row,
+            rowIndex: i,
+            cells: row.cells.map((v, j) => ({ ...v, rowIndex: i, colIndex: j })),
+          }
+        })
+
         return {
           ...prev,
-          rows: rowsWithColspanUpdated,
+          rows: rowsWithIndexUpdated,
           colHeaders: insertAll(colIndex, [colHeader], prev.colHeaders || []),
         }
       })
@@ -387,10 +418,19 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         }),
       }))
 
+      // 相应的索引需要更新
+      const rowsWithIndexUpdated = rowsWithColspanUpdated.map((row, i) => {
+        return {
+          ...row,
+          rowIndex: i,
+          cells: row.cells.map((v, j) => ({ ...v, rowIndex: i, colIndex: j })),
+        }
+      })
+
       return {
         ...prev,
         colHeaders: prev.colHeaders?.filter((_, i) => i < startColIndex || i > endColIndex),
-        rows: rowsWithColspanUpdated,
+        rows: rowsWithIndexUpdated,
       }
     })
 
@@ -406,6 +446,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
 
     $setFormTableProps(editor, props.nodeKey, (prev) => {
       const prevRows = prev.rows || []
+
       const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
 
       // 所在行的所有单元格
@@ -430,7 +471,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         return matched ? [...acc, matched] : acc
       }, [])
 
-      // 删除的跨行单元格
+      // 需要目标行的所有单元格
       const rowsWithRemovedCells = prevRows.filter((_, i) => i !== rowIndex)
 
       // 找到被删除的合并单元格的下一行的单元格
@@ -469,9 +510,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         return {
           ...row,
           rowIndex: i,
-          cells: row.cells.map((v, j) => {
-            return { ...v, rowIndex: i, colIndex: j }
-          }),
+          cells: row.cells.map((v, j) => ({ ...v, rowIndex: i, colIndex: j })),
         }
       })
 
