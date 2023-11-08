@@ -9,29 +9,25 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import clsx from 'clsx'
 import { NodeKey, createEditor } from 'lexical'
 import { clone, head, insertAll, prop, uniqBy } from 'ramda'
-import React, { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from './const'
+import { useSelectedCells } from './store'
 import { CellData, ColHeader, SelectedCell } from './types'
 import { $setFormTableProps, uid } from './utils'
 
 export type TopCellMenusProps = {
-  selectedCells: SelectedCell[]
-  setSelectedCells: React.Dispatch<React.SetStateAction<SelectedCell[]>>
-
   nodeKey: NodeKey
 }
 
 export default function TopCellMenus(props: TopCellMenusProps) {
   const [editor] = useLexicalComposerContext()
   const elRef = useRef<HTMLElement>(null)
+  const { selectedCells, setSelectedCells } = useSelectedCells()
 
   // 合并单元格
   const canMergeCells = useMemo(() => {
-    return (
-      props.selectedCells.length > 1 &&
-      props.selectedCells.every((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) === 2)
-    )
-  }, [props.selectedCells])
+    return selectedCells.length > 1 && selectedCells.every((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) === 2)
+  }, [selectedCells])
 
   const mergeCells = useCallback(() => {
     // 左上角需要修改的单元格
@@ -42,17 +38,13 @@ export default function TopCellMenus(props: TopCellMenusProps) {
     }
 
     const rowSpan =
-      1 +
-      Math.max(...props.selectedCells.map((v) => v.rowIndex)) -
-      Math.min(...props.selectedCells.map((v) => v.rowIndex))
+      1 + Math.max(...selectedCells.map((v) => v.rowIndex)) - Math.min(...selectedCells.map((v) => v.rowIndex))
     const colSpan =
-      1 +
-      Math.max(...props.selectedCells.map((v) => v.colIndex)) -
-      Math.min(...props.selectedCells.map((v) => v.colIndex))
+      1 + Math.max(...selectedCells.map((v) => v.colIndex)) - Math.min(...selectedCells.map((v) => v.colIndex))
 
     // 找到最左上角的单元格,并设置新的行列数
-    for (let index = 0; index < props.selectedCells.length; index++) {
-      const item = props.selectedCells[index]
+    for (let index = 0; index < selectedCells.length; index++) {
+      const item = selectedCells[index]
       if (item.rowIndex < targetCell.rowIndex || item.colIndex < targetCell.colIndex) {
         targetCell = { ...item, rowSpan, colSpan }
         break
@@ -60,7 +52,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
     }
 
     // 需要被隐藏的单元格
-    const removeCellIds = props.selectedCells.filter((v) => v.id !== targetCell.id).map((v) => v.id)
+    const removeCellIds = selectedCells.filter((v) => v.id !== targetCell.id).map((v) => v.id)
 
     $setFormTableProps(editor, props.nodeKey, (prev) => {
       return {
@@ -79,27 +71,24 @@ export default function TopCellMenus(props: TopCellMenusProps) {
       }
     })
 
-    props.setSelectedCells([targetCell])
-  }, [editor, props])
+    setSelectedCells([targetCell])
+  }, [editor, props.nodeKey, selectedCells, setSelectedCells])
 
   // 拆分单元格
   const canUnmergeCells = useMemo(() => {
-    return (
-      props.selectedCells.length > 0 &&
-      props.selectedCells.some((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) > 2)
-    )
-  }, [props.selectedCells])
+    return selectedCells.length > 0 && selectedCells.some((cell) => (cell.rowSpan || 1) + (cell.colSpan || 1) > 2)
+  }, [selectedCells])
 
   const unmergeCells = useCallback(() => {
     // 更新后选中的单元格
-    const nextSelectedCells = clone(props.selectedCells)
+    const nextSelectedCells = clone(selectedCells)
 
     $setFormTableProps(editor, props.nodeKey, (prev) => {
       const prevRows = prev.rows || []
       const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
 
       // 选区中的合并单元格
-      const mergeCells = props.selectedCells.filter((v) => (v.colSpan || 1) + (v.rowSpan || 1) > 2)
+      const mergeCells = selectedCells.filter((v) => (v.colSpan || 1) + (v.rowSpan || 1) > 2)
 
       // 合并单元格内部被隐藏的单元格
       const hiddenCells = mergeCells.reduce<CellData[]>((acc, curr) => {
@@ -139,18 +128,18 @@ export default function TopCellMenus(props: TopCellMenusProps) {
       return { ...prev, rows: rowsWithReshowCells }
     })
 
-    props.setSelectedCells(nextSelectedCells)
-  }, [editor, props])
+    setSelectedCells(nextSelectedCells)
+  }, [editor, props.nodeKey, selectedCells, setSelectedCells])
 
   // 插入行列
   const canInsert = useMemo(() => {
     // 目前只考虑选择一个单元格后的情况
-    return props.selectedCells.length === 1
-  }, [props.selectedCells])
+    return selectedCells.length === 1
+  }, [selectedCells])
 
   const insertRow = useCallback(
     (direction?: 'up' | 'down') => {
-      const rowIndex = (head(props.selectedCells)?.rowIndex || 0) + (direction === 'up' ? 0 : 1)
+      const rowIndex = (head(selectedCells)?.rowIndex || 0) + (direction === 'up' ? 0 : 1)
 
       // 相交的单元格坐标
       const intersectantCellsIndex: { rowIndex: number; colIndex: number }[] = []
@@ -230,7 +219,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         }
       })
     },
-    [editor, props.nodeKey, props.selectedCells]
+    [editor, props.nodeKey, selectedCells]
   )
 
   const insertCol = useCallback(
@@ -240,7 +229,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
 
         // 预插入的列索引
-        const colIndex = (head(props.selectedCells)?.colIndex || 0) + (direction === 'left' ? 0 : 1)
+        const colIndex = (head(selectedCells)?.colIndex || 0) + (direction === 'left' ? 0 : 1)
 
         // 预插入的列与当前表格中已合并的单元格相交部分的单元格
         const intersectantCells = flattenCells.filter((v) => v.colIndex === colIndex)
@@ -314,20 +303,20 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         }
       })
     },
-    [editor, props.nodeKey, props.selectedCells]
+    [editor, props.nodeKey, selectedCells]
   )
 
   // 删除行列
   const canRemove = useMemo(() => {
-    return props.selectedCells.length === 1
-  }, [props.selectedCells.length])
+    return selectedCells.length === 1
+  }, [selectedCells.length])
 
   const removeCol = useCallback(() => {
     $setFormTableProps(editor, props.nodeKey, (prev) => {
       // 单元格可能是合并的单元格
       // 删除时需要把横跨的所有列都删除
-      const startColIndex = head(props.selectedCells)?.colIndex || 0
-      const endColIndex = startColIndex + (head(props.selectedCells)?.colSpan || 1) - 1
+      const startColIndex = head(selectedCells)?.colIndex || 0
+      const endColIndex = startColIndex + (head(selectedCells)?.colSpan || 1) - 1
 
       const prevRows = prev.rows || []
       const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
@@ -405,16 +394,100 @@ export default function TopCellMenus(props: TopCellMenusProps) {
       }
     })
 
-    props.setSelectedCells([])
-  }, [editor, props])
+    setSelectedCells([])
+  }, [editor, props.nodeKey, selectedCells, setSelectedCells])
+
+  const removeRow = useCallback(() => {
+    // 目前的逻辑是只删除一行
+    // 如果所选的单元格是一个合并的单元格,则删除该单元格所在的行,单元格的 rowSpan 会减一
+
+    // 单元格所在的行
+    const rowIndex = head(selectedCells)?.rowIndex || 0
+
+    $setFormTableProps(editor, props.nodeKey, (prev) => {
+      const prevRows = prev.rows || []
+      const flattenCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
+
+      // 所在行的所有单元格
+      const cellsInRow = flattenCells.filter((v) => v.rowIndex === rowIndex)
+
+      // 合并的跨行单元格
+      const mergedCells = cellsInRow.filter((v) => v.rowSpan && v.rowSpan > 1)
+
+      // 被删除的隐藏单元格
+      const hiddenCells = cellsInRow.filter((v) => v.hidden)
+
+      // 被删除的隐藏单元格所对应的合并单元格
+      // 这些合并单元格的 rowSpan 会减一
+      const outsideMergedCells = hiddenCells.reduce<CellData[]>((acc, curr) => {
+        const matched = flattenCells.find(
+          (v) =>
+            curr.rowIndex > v.rowIndex &&
+            curr.rowIndex <= v.rowIndex + (v.rowSpan || 1) - 1 &&
+            curr.colIndex >= v.colIndex &&
+            curr.colIndex <= v.colIndex + (v.colSpan || 1) - 1
+        )
+        return matched ? [...acc, matched] : acc
+      }, [])
+
+      // 删除的跨行单元格
+      const rowsWithRemovedCells = prevRows.filter((_, i) => i !== rowIndex)
+
+      // 找到被删除的合并单元格的下一行的单元格
+      // 显示它,并继承它所属合并单元格的 rowSpan
+      const rowsWithExpandedCells = rowsWithRemovedCells.map((row) => ({
+        ...row,
+        cells: row.cells.map((v) => {
+          if (v.hidden) {
+            // 当前隐藏单元格的上一行合并单元格
+            const matchedMergedCell = mergedCells.find(
+              (m) => m.colIndex === v.colIndex && m.rowIndex === v.rowIndex - 1
+            )
+
+            if (matchedMergedCell) {
+              return { ...v, hidden: undefined, rowSpan: (matchedMergedCell.rowSpan || 1) - 1 }
+            }
+          }
+
+          return v
+        }),
+      }))
+
+      const rowsWithRowSpanUpdated = rowsWithExpandedCells.map((row) => ({
+        ...row,
+        cells: row.cells.map((v) => {
+          if (outsideMergedCells.some((m) => m.id === v.id)) {
+            return { ...v, rowSpan: (v.rowSpan || 1) - 1 }
+          }
+
+          return v
+        }),
+      }))
+
+      // 因为行列数目发生了变化，需要重新计算 rowIndex 和 colIndex
+      const rowsWithIndexUpdated = rowsWithRowSpanUpdated.map((row, i) => {
+        return {
+          ...row,
+          rowIndex: i,
+          cells: row.cells.map((v, j) => {
+            return { ...v, rowIndex: i, colIndex: j }
+          }),
+        }
+      })
+
+      return { ...prev, rows: rowsWithIndexUpdated }
+    })
+
+    setSelectedCells([])
+  }, [editor, props.nodeKey, selectedCells, setSelectedCells])
 
   return (
     <>
-      <caption
+      <section
         ref={elRef}
         className={clsx(
           'absolute left-0 top-0 right-0 flex space-x-4 p-2 -translate-y-full bg-lime-500 transition-all',
-          props.selectedCells.length > 0 ? 'visible opacity-100' : 'invisible opacity-0'
+          selectedCells.length > 0 ? 'visible opacity-100' : 'invisible opacity-0'
         )}
       >
         <button
@@ -456,8 +529,16 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           删除所在列
         </button>
 
+        <button
+          disabled={!canRemove}
+          className='disabled:text-gray-400 disabled:cursor-not-allowed'
+          onClick={() => removeRow()}
+        >
+          删除所在行
+        </button>
+
         <button>背景色</button>
-      </caption>
+      </section>
     </>
   )
 }

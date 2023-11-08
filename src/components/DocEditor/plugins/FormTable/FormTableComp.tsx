@@ -12,12 +12,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import TopCellMenus from './TopCellMenus'
 import { DATA_CELL, ROW_HEADER } from './const'
+import { useSelectedCells } from './store'
 import { FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
   const tableRef = useRef<HTMLTableElement>(null)
-  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([])
+  const { selectedCells, setSelectedCells } = useSelectedCells()
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
@@ -124,7 +125,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
         setSelectedCells(uniqBy(prop('id'), cellsInRange))
       }
     },
-    [selecting, startPos]
+    [selecting, setSelectedCells, startPos.x, startPos.y]
   )
 
   const onSelectEnd = useCallback(() => {
@@ -149,10 +150,12 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
     <>
       <h1>FormTableComp</h1>
 
-      <table ref={tableRef} className='relative select-none overflow-y-hidden'>
-        {/* 单元格功能菜单 */}
-        <TopCellMenus selectedCells={selectedCells} setSelectedCells={setSelectedCells} nodeKey={props.nodeKey} />
+      {/* 单元格功能菜单 */}
+      <section className='relative'>
+        <TopCellMenus nodeKey={props.nodeKey} />
+      </section>
 
+      <table ref={tableRef} className='relative select-none overflow-y-hidden'>
         <thead>
           <tr>
             <th id='origin' className='bg-orange-400' style={{ width: 24, height: 24 }}></th>

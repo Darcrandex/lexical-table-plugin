@@ -6,8 +6,11 @@ export type RowItem = { id: string; height?: number; cells: CellData[] }
 
 export type CellData = {
   id: string
+
+  // 行列索引一定有,但是动态的
   rowIndex: number
   colIndex: number
+
   colSpan?: number
   rowSpan?: number
 
