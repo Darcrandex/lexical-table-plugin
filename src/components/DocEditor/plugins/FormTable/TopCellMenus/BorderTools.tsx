@@ -29,24 +29,16 @@ export default function BorderTools(props: { nodeKey: NodeKey }) {
               if (selectedCells.some((v) => v.id === cell.id)) {
                 let borders = clone(cell.borders) || []
 
-                if (type === 'all') {
-                  borders = [
-                    { direction: 'left' },
-                    { direction: 'top' },
-                    { direction: 'right' },
-                    { direction: 'bottom' },
-                  ]
-                } else if (type === 'empty') {
-                  borders = []
-                } else if (type === 'left') {
-                  borders = uniqBy(prop('direction'), borders.concat({ direction: 'left' }))
-                } else if (type === 'top') {
-                  borders = uniqBy(prop('direction'), borders.concat({ direction: 'top' }))
-                } else if (type === 'bottom') {
-                  borders = uniqBy(prop('direction'), borders.concat({ direction: 'bottom' }))
-                } else if (type === 'right') {
-                  borders = uniqBy(prop('direction'), borders.concat({ direction: 'right' }))
+                const borderConfigs: Record<string, CellBorderSettings[]> = {
+                  all: [{ direction: 'left' }, { direction: 'top' }, { direction: 'right' }, { direction: 'bottom' }],
+                  empty: [],
+                  left: [{ direction: 'left' }],
+                  top: [{ direction: 'top' }],
+                  bottom: [{ direction: 'bottom' }],
+                  right: [{ direction: 'right' }],
                 }
+
+                borders = uniqBy(prop('direction'), borders.concat(borderConfigs[type]))
 
                 return { ...cell, borders }
               }
@@ -69,28 +61,6 @@ export default function BorderTools(props: { nodeKey: NodeKey }) {
       <button onClick={() => setBorders('right')}>right</button>
       <button onClick={() => setBorders('bottom')}>bottom</button>
       <button onClick={() => setBorders('empty')}>empty</button>
-    </>
-  )
-}
-
-export function BordersRender(props: { borders?: CellBorderSettings[] }) {
-  return (
-    <>
-      {props.borders?.some((v) => v.direction === 'left') && (
-        <i className='absolute -top-[1px] -bottom-[1px] -left-[1px] border-l border-emerald-400'></i>
-      )}
-
-      {props.borders?.some((v) => v.direction === 'top') && (
-        <i className='absolute -top-[1px] -left-[1px] -right-[1px] border-t border-emerald-400'></i>
-      )}
-
-      {props.borders?.some((v) => v.direction === 'right') && (
-        <i className='absolute -top-[1px] -right-[1px] -bottom-[1px] border-r border-emerald-400'></i>
-      )}
-
-      {props.borders?.some((v) => v.direction === 'bottom') && (
-        <i className='absolute -bottom-[1px] -left-[1px] -right-[1px] border-b border-emerald-400'></i>
-      )}
     </>
   )
 }
