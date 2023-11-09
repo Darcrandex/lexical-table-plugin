@@ -11,10 +11,11 @@ import { prop, uniqBy } from 'ramda'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ColHeaderItem from './ColHeaderItem'
 import EditableCell from './EditableCell'
+import RowHeaderItem from './RowHeaderItem'
 import TopCellMenus from './TopCellMenus'
 import BordersRender from './TopCellMenus/BordersRender'
-import { DATA_CELL, ROW_HEADER } from './const'
-import { useSelectedCells } from './store'
+import { DATA_CELL } from './const'
+import { useSelectedCells, useSelectedCol, useSelectedRow } from './store'
 import { CellData, FormTableCompProps, SelectedCell } from './types'
 
 export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
@@ -22,6 +23,8 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
   const tableRef = useRef<HTMLTableElement>(null)
   const menuRef = useRef<HTMLElement>(null)
   const { selectedCells, setSelectedCells } = useSelectedCells()
+  const { setSelectedRowId } = useSelectedRow()
+  const { setSelectedColId } = useSelectedCol()
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
@@ -157,7 +160,9 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
     const cells = props.rows?.reduce<CellData[]>((acc, row) => acc.concat(row.cells), []) || []
     const visibleCells = cells?.filter((v) => !v.hidden)
     setSelectedCells(visibleCells)
-  }, [props.rows, setSelectedCells])
+    setSelectedColId(undefined)
+    setSelectedRowId(undefined)
+  }, [props.rows, setSelectedCells, setSelectedColId, setSelectedRowId])
 
   return (
     <>
@@ -168,14 +173,14 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
         <TopCellMenus nodeKey={props.nodeKey} />
       </section>
 
-      <table ref={tableRef} className='relative select-none overflow-y-hidden'>
+      <table ref={tableRef} id={props.id} className='relative select-none overflow-y-hidden'>
         <thead>
           <tr>
             <th id='origin' className='bg-orange-400' onClick={onSelectAll}></th>
 
             {/* 列头 */}
             {props.colHeaders?.map((item, colIndex) => (
-              <ColHeaderItem key={item.id} col={item} index={colIndex} nodeKey={props.nodeKey} />
+              <ColHeaderItem key={item.id} col={item} index={colIndex} tableId={props.id} nodeKey={props.nodeKey} />
             ))}
           </tr>
         </thead>
@@ -184,9 +189,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           {props.rows?.map((row, rowIndex) => (
             <tr key={row.id}>
               {/* 行头 */}
-              <th id={row.id} className={clsx(ROW_HEADER, 'bg-violet-400 px-2')}>
-                {rowIndex + 1}
-              </th>
+              <RowHeaderItem id={row.id} index={rowIndex} tableId={props.id} nodeKey={props.nodeKey} />
 
               {row.cells?.map((cell, cellIndex) => (
                 <td
@@ -209,7 +212,11 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                       { id: cell.id, rowIndex, colIndex: cellIndex, rowSpan: cell.rowSpan, colSpan: cell.colSpan },
                     ])
                   }
-                  onMouseDown={(e) => onSelectStart(e.nativeEvent)}
+                  onMouseDown={(e) => {
+                    onSelectStart(e.nativeEvent)
+                    setSelectedColId(undefined)
+                    setSelectedRowId(undefined)
+                  }}
                 >
                   {!!cell.nestedEditor && <EditableCell nestedEditor={cell.nestedEditor} />}
 

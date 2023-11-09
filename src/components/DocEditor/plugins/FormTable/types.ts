@@ -6,7 +6,7 @@ export type ColHeader = { id: string; width?: number }
 export type RowItem = { id: string; height?: number; cells: CellData[] }
 
 export type CellData = {
-  id: string
+  id: string // table 元素的id
 
   // 行列索引一定有,但是动态的
   rowIndex: number
@@ -31,6 +31,7 @@ export type CellData = {
 }
 
 export type FormTableCompProps = {
+  id: string
   bgColor?: string
   colHeaders?: ColHeader[]
   rows?: RowItem[]

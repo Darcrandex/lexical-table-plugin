@@ -6,7 +6,7 @@ import { FormTableCommandPayload, FormTableCompProps, FormTableData } from './ty
 import { uid } from './utils'
 
 export class FormTableNode extends DecoratorNode<ReactNode> {
-  __props: FormTableCompProps = {}
+  __props: FormTableCompProps = { id: '' }
 
   constructor(props: FormTableCompProps, key?: NodeKey) {
     super(key)
@@ -97,6 +97,7 @@ export function $createFormTableNode(payload: FormTableCommandPayload) {
   // 初次创建表格
 
   const props: FormTableCompProps = {
+    id: uid(),
     colHeaders: Array(payload.cols)
       .fill(0)
       .map(() => ({ id: uid(), width: DEFAULT_CELL_WIDTH })),
