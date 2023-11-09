@@ -153,75 +153,93 @@ export default function TopCellMenus(props: TopCellMenusProps) {
 
   const insertRow = useCallback(
     (direction?: 'up' | 'down') => {
-      // 相交的单元格坐标
-      const intersectantCellsIndex: { rowIndex: number; colIndex: number }[] = []
-
       $setFormTableProps(editor, props.nodeKey, (prev) => {
-        const cols = prev.colHeaders?.length || 0
+        const colLen = prev.colHeaders?.length || 0
         const prevRows = prev.rows || []
+        const flatCells = prevRows.reduce<CellData[]>((acc, row) => acc.concat(row.cells), [])
         const rowIndex = prevRows.findIndex((v) => v.id === selectedRowId) + (direction === 'up' ? 0 : 1)
 
-        const row = {
-          id: uid(),
-          cells: Array(cols)
-            .fill(0)
-            .map<CellData>((_, cellIndex) => {
-              const cellId = uid()
-              const editorState = createEditor().parseEditorState(DEFAULT_EDITOR_STATE_STRING)
+        const cellsInCurrRow = flatCells.filter((v) => v.rowIndex === rowIndex - 1)
+        const cellsInNextRow = flatCells.filter((v) => v.rowIndex === rowIndex)
 
-              // 原来的行
-              const replaceRow = prevRows.find((_, ridx) => ridx === rowIndex)
-              // 目标行与存在合并单元格相交的列号
-              const hiddenCellIndexArr =
-                replaceRow?.cells.reduce<number[]>((acc, cur, idx) => (cur.hidden ? [...acc, idx] : acc), []) || []
+        const newCells: CellData[] = Array(colLen)
+          .fill(0)
+          .map((_, colIndex) => {
+            let hidden: boolean | undefined
 
-              // 相交的单元格坐标
-              const arr = hiddenCellIndexArr.map((idx) => ({ rowIndex: rowIndex, colIndex: idx }))
-              intersectantCellsIndex.push(...arr)
+            // 当前列的单元格
+            const cell1 = cellsInCurrRow.find((v) => v.colIndex === colIndex)
+            // 当前列的下一行单元格
+            const cell2 = cellsInNextRow.find((v) => v.colIndex === colIndex)
 
-              return {
-                id: cellId,
-                rowIndex,
-                colIndex: cellIndex,
-                nestedEditor: createEditor({ namespace: cellId, editable: false, editorState }),
-                hidden: hiddenCellIndexArr?.includes(cellIndex),
-              }
-            }),
-        }
-
-        // 添加了新行的表格
-        const nextRows = insertAll(rowIndex, [row], prevRows)
-        console.log('intersectantCellsIndex', intersectantCellsIndex)
-        const flatCells = prevRows.reduce<any[]>((acc, row, i) => {
-          return acc.concat(
-            row.cells.map((cell, j) => {
-              return { id: cell.id, rowIndex: i, colIndex: j, rowSpan: cell.rowSpan, colSpan: cell.colSpan }
-            })
-          )
-        }, [])
-
-        console.log('flatCells', flatCells)
-        const shouldAddRowSpanCells = uniqBy(
-          prop('id'),
-          intersectantCellsIndex.reduce<any[]>((acc, cur) => {
-            const cell = flatCells.find((v) => v.colIndex === cur.colIndex && v.rowIndex + v.rowSpan >= cur.rowIndex)
-            if (cell) {
-              return [...acc, cell]
+            // 如果 cell1 是一个跨行单元格
+            if (cell1 && cell1.rowSpan && cell1.rowSpan > 1) {
+              hidden = true
             }
 
-            return acc
+            // 如果相邻的两个单元格都是被隐藏的单元格
+            // 判断它们是否属于同一个合并单元格
+            if (cell1?.hidden && cell2?.hidden) {
+              const mergeCell1 = flatCells.find(
+                (v) =>
+                  cell1.rowIndex >= v.rowIndex &&
+                  cell1.rowIndex <= v.rowIndex + (v.rowSpan || 1) - 1 &&
+                  cell1.colIndex >= v.colIndex &&
+                  cell1.colIndex <= v.colIndex + (v.colSpan || 1) - 1
+              )
+
+              const mergeCell2 = flatCells.find(
+                (v) =>
+                  cell2.rowIndex >= v.rowIndex &&
+                  cell2.rowIndex <= v.rowIndex + (v.rowSpan || 1) - 1 &&
+                  cell2.colIndex >= v.colIndex &&
+                  cell2.colIndex <= v.colIndex + (v.colSpan || 1) - 1
+              )
+
+              if (mergeCell1?.id === mergeCell2?.id) {
+                hidden = true
+              }
+            }
+
+            const id = uid()
+            const editorState = createEditor().parseEditorState(DEFAULT_EDITOR_STATE_STRING)
+
+            return {
+              id,
+              rowIndex,
+              colIndex,
+              nestedEditor: createEditor({ namespace: id, editable: false, editorState }),
+              hidden,
+            }
+          })
+
+        const shouldAddRowSpanCells = uniqBy(
+          prop('id'),
+          newCells.reduce<CellData[]>((acc, curr) => {
+            const matched = flatCells.find(
+              (v) =>
+                curr.hidden &&
+                !v.hidden &&
+                curr.rowIndex > v.rowIndex &&
+                curr.rowIndex <= v.rowIndex + (v.rowSpan || 1) - 1 &&
+                curr.colIndex >= v.colIndex &&
+                curr.colIndex <= v.colIndex + (v.colSpan || 1) - 1
+            )
+
+            return matched ? [...acc, matched] : acc
           }, [])
         )
 
-        const rowsWithRowSpanUpdated = nextRows.map((row) => {
+        const rowsWithAppendRow = insertAll(rowIndex, [{ id: uid(), cells: newCells }], prevRows)
+
+        const rowsWithRowSpanUpdated = rowsWithAppendRow.map((row) => {
           return {
             ...row,
             cells: row.cells.map((cell) => {
               if (shouldAddRowSpanCells.some((v) => v.id === cell.id)) {
-                return { ...cell, rowSpan: (cell.rowSpan || 0) + 1 }
-              } else {
-                return cell
+                return { ...cell, rowSpan: (cell.rowSpan || 1) + 1 }
               }
+              return cell
             }),
           }
         })
@@ -235,10 +253,7 @@ export default function TopCellMenus(props: TopCellMenusProps) {
           }
         })
 
-        return {
-          ...prev,
-          rows: rowsWithIndexUpdated,
-        }
+        return { ...prev, rows: rowsWithIndexUpdated }
       })
     },
     [editor, props.nodeKey, selectedRowId]
