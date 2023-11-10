@@ -15,7 +15,7 @@ export function $getFormTableProps(editor: LexicalEditor, nodeKey: NodeKey): For
     if ($isFormTableNode(node)) {
       return node.getProps()
     }
-    return {}
+    return { id: '' }
   })
 }
 
