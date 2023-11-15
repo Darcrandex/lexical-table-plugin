@@ -10,7 +10,7 @@ import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { COL_HEADER, DEFAULT_CELL_WIDTH, MIN_CELL_WIDTH } from './const'
-import { useSelectedCells, useSelectedCol, useSelectedRow } from './store'
+import { useFormTableContext } from './context'
 import { ColHeader } from './types'
 import { $setFormTableProps } from './utils'
 
@@ -71,9 +71,8 @@ export default function ColHeaderItem(props: { col: ColHeader; index: number; ta
     }
   }, [onResizeEnd, onResizing])
 
-  const { selectedColId, setSelectedColId } = useSelectedCol()
-  const { setSelectedRowId } = useSelectedRow()
-  const { setSelectedCells } = useSelectedCells()
+  // 单元格交互
+  const { selectedColId, setSelectedColId, setSelectedRowId, setSelectedCells } = useFormTableContext()
 
   const [tableHeight, setTableHeight] = useState(0)
   const size = useSize(() => document.getElementById(props.tableId))

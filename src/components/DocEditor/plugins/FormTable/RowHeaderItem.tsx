@@ -9,14 +9,12 @@ import clsx from 'clsx'
 import { NodeKey } from 'lexical'
 import { useEffect, useRef, useState } from 'react'
 import { ROW_HEADER } from './const'
-import { useSelectedCells, useSelectedCol, useSelectedRow } from './store'
+import { useFormTableContext } from './context'
 
 type RowHeaderItemProps = { id: string; index: number; tableId: string; nodeKey: NodeKey }
 
 export default function RowHeaderItem(props: RowHeaderItemProps) {
-  const { selectedRowId, setSelectedRowId } = useSelectedRow()
-  const { setSelectedColId } = useSelectedCol()
-  const { setSelectedCells } = useSelectedCells()
+  const { selectedRowId, setSelectedColId, setSelectedRowId, setSelectedCells } = useFormTableContext()
 
   const elRef = useRef<any>(null)
   const [tableWidth, setTableWidth] = useState(0)

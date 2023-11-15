@@ -10,10 +10,11 @@ import { NodeKey, createEditor } from 'lexical'
 import { clone, insertAll, isNil, isNotNil, mergeDeepRight, prop, uniqBy } from 'ramda'
 import { CSSProperties, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_CELL_WIDTH, DEFAULT_EDITOR_STATE_STRING } from '../const'
-import { useSelectedCells, useSelectedCol, useSelectedRow } from '../store'
+import { useFormTableContext } from '../context'
 import { CellData, ColHeader } from '../types'
 import { $setFormTableProps, uid } from '../utils'
 import BorderTools from './BorderTools'
+import TableTools from './TableTools'
 
 export type TopCellMenusProps = {
   nodeKey: NodeKey
@@ -22,10 +23,9 @@ export type TopCellMenusProps = {
 export default function TopCellMenus(props: TopCellMenusProps) {
   const [editor] = useLexicalComposerContext()
   const elRef = useRef<HTMLElement>(null)
-  const { selectedCells, setSelectedCells } = useSelectedCells()
 
-  const { selectedRowId } = useSelectedRow()
-  const { selectedColId } = useSelectedCol()
+  const { selectedCells, selectedColId, selectedRowId, setSelectedCells } = useFormTableContext()
+
   const showMenus = useMemo(() => {
     return selectedCells.length > 0 || isNotNil(selectedRowId) || isNotNil(selectedColId)
   }, [selectedCells.length, selectedColId, selectedRowId])
@@ -616,6 +616,8 @@ export default function TopCellMenus(props: TopCellMenusProps) {
         </button>
 
         <BorderTools nodeKey={props.nodeKey} />
+
+        <TableTools nodeKey={props.nodeKey} />
       </section>
     </>
   )

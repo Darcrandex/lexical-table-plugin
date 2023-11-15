@@ -8,13 +8,13 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { NodeKey } from 'lexical'
 import { clone, prop, uniqBy } from 'ramda'
 import { useCallback, useMemo } from 'react'
-import { useSelectedCells } from '../store'
+import { useFormTableContext } from '../context'
 import { CellBorderSettings } from '../types'
 import { $setFormTableProps } from '../utils'
 
 export default function BorderTools(props: { nodeKey: NodeKey }) {
   const [editor] = useLexicalComposerContext()
-  const { selectedCells } = useSelectedCells()
+  const { selectedCells } = useFormTableContext()
 
   const show = useMemo(() => selectedCells.length >= 1, [selectedCells.length])
 

@@ -15,16 +15,15 @@ import RowHeaderItem from './RowHeaderItem'
 import TopCellMenus from './TopCellMenus'
 import BordersRender from './TopCellMenus/BordersRender'
 import { DATA_CELL } from './const'
-import { useSelectedCells, useSelectedCol, useSelectedRow } from './store'
+import { FormTableContext, useFormTableContext } from './context'
 import { CellData, FormTableCompProps, SelectedCell } from './types'
 
-export default function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
+function FormTableComp(props: FormTableCompProps & { nodeKey: NodeKey }) {
   // 选中单元格
   const tableRef = useRef<HTMLTableElement>(null)
   const menuRef = useRef<HTMLElement>(null)
-  const { selectedCells, setSelectedCells } = useSelectedCells()
-  const { setSelectedRowId } = useSelectedRow()
-  const { setSelectedColId } = useSelectedCol()
+
+  const { selectedCells, setSelectedCells, setSelectedRowId, setSelectedColId } = useFormTableContext()
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [selecting, setSelecting] = useState(false)
@@ -202,7 +201,7 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
                   colSpan={cell.colSpan}
                   className={clsx(
                     DATA_CELL,
-                    'relative border p-0',
+                    'relative border p-0 align-top',
                     cell.hidden && 'hidden invisible',
                     selectedCells.some((v) => v.id === cell.id) ? 'bg-yellow-400' : 'bg-white'
                   )}
@@ -227,6 +226,29 @@ export default function FormTableComp(props: FormTableCompProps & { nodeKey: Nod
           ))}
         </tbody>
       </table>
+    </>
+  )
+}
+
+export default function FormTableCompWithContext(props: FormTableCompProps & { nodeKey: NodeKey }) {
+  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([])
+  const [selectedRowId, setSelectedRowId] = useState<string>()
+  const [selectedColId, setSelectedColId] = useState<string>()
+
+  return (
+    <>
+      <FormTableContext.Provider
+        value={{
+          selectedCells,
+          setSelectedCells,
+          selectedRowId,
+          setSelectedRowId,
+          selectedColId,
+          setSelectedColId,
+        }}
+      >
+        <FormTableComp {...props} />
+      </FormTableContext.Provider>
     </>
   )
 }
